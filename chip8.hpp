@@ -6,10 +6,15 @@ class Chip8;
 
 typedef void(Chip8::*groupFunc)(uint16_t);
 
+struct MemCell {
+    uint16_t addr;
+    uint8_t value;
+};
+
 class Chip8 {
     
 
-    uint8_t *mProgram;
+    const uint8_t *mProgram;
     void run();
     
     // registers
@@ -18,6 +23,14 @@ class Chip8 {
     uint16_t mPC = 0x200;
     uint16_t mI = 0;
     uint16_t mV[16];
+    uint16_t mStack[16];
+    uint8_t mSP = 0;
+
+    mM[
+    MemCell mM[180];
+    uint16_t mMP = 0;
+
+    bool mRunning = false;
 
     Arduboy2 &mBoy;
 
@@ -91,11 +104,21 @@ class Chip8 {
     void groupKeyboard(uint16_t);
     void groupLoad(uint16_t);
 
+    void unimpl(uint16_t);
+
+    // memory hack
+    MemCell* findM(uint16_t addr);
+    void storeM(uint16_t addr, uint8_t val);
+    uint8_t readM(uint16_t addr);
+
+
+    uint16_t lastinst;
 
     public:
        Chip8(Arduboy2 &boy);
-       void Load(uint16_t program[]);
+       void Load(const uint8_t program[]);
        void Reset();
        void Step();
+       bool Running();
 
 };
