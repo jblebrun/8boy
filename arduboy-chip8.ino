@@ -9,6 +9,7 @@ void setup() {
     boy.begin();
     boy.initRandomSeed();
     Serial.begin(115200);
+    boy.setFrameRate(60);
     emu.Load((const uint8_t*)pgm_read_ptr(&programs[0]));
     while(!Serial);
 }
