@@ -20,6 +20,9 @@ void loop() {
         emu.Reset();
     }
 
+    if(boy.justPressed(A_BUTTON)) {
+        emu.Toggle();
+    }
     if(emu.Running()) {
         emu.Step();
     }

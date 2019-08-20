@@ -6,11 +6,6 @@ class Chip8;
 
 typedef void(Chip8::*groupFunc)(uint16_t);
 
-struct MemCell {
-    uint16_t addr;
-    uint8_t value;
-};
-
 class Chip8 {
     
 
@@ -25,14 +20,21 @@ class Chip8 {
     uint16_t mV[16];
     uint16_t mStack[16];
     uint8_t mSP = 0;
+    uint16_t mDT;
 
-    mM[
-    MemCell mM[180];
-    uint16_t mMP = 0;
+    uint16_t mWrites = 0;
 
     bool mRunning = false;
 
+    uint8_t mM[512];
+
     Arduboy2 &mBoy;
+
+    
+    // XXX MEMORY HANDLING --
+    // if below size of program, use cell
+    // otherwise, hope it starts right after program
+    
 
     // function table
     groupFunc groupFuncs[16] {
@@ -106,12 +108,6 @@ class Chip8 {
 
     void unimpl(uint16_t);
 
-    // memory hack
-    MemCell* findM(uint16_t addr);
-    void storeM(uint16_t addr, uint8_t val);
-    uint8_t readM(uint16_t addr);
-
-
     uint16_t lastinst;
 
     public:
@@ -120,5 +116,6 @@ class Chip8 {
        void Reset();
        void Step();
        bool Running();
+       void Toggle();
 
 };

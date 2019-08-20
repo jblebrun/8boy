@@ -10,6 +10,7 @@ void Chip8::Load(const uint8_t *program) {
 }
 
 void Chip8::Reset() {
+    mWrites = 0;
     mPC = 0x200;
     mSP = 0;
     mRunning = true;
@@ -17,6 +18,10 @@ void Chip8::Reset() {
 
 bool Chip8::Running() {
     return mRunning;
+}
+
+void Chip8::Toggle() {
+    mRunning = !mRunning;
 }
 
 void Chip8::Step() {
@@ -81,7 +86,7 @@ void Chip8::groupSys(uint16_t inst) {
             mSP--;
             Serial.print(mPC, HEX);
             Serial.print(" RET ");
-            mPC = mStack[mPC];
+            mPC = mStack[mSP];
             Serial.println(mPC, HEX);
 
             break;
@@ -144,7 +149,7 @@ void Chip8::groupAddImm(uint16_t inst) {
 
 void Chip8::unimpl(uint16_t inst) {
     Serial.print("UN ");
-    Serial.println(inst);
+    Serial.println(inst, HEX);
     mRunning = false;
 }
 
@@ -155,14 +160,37 @@ void Chip8::groupALU(uint16_t inst) {
         case 0x0: // LD Vx, Vy
             mV[reg(inst)] = mV[reg2(inst)];
             break;
+        case 0x1: // Vx = Vx | Vy
+            mV[reg(inst)] = mV[reg(inst)] | mV[reg2(inst)];
+            break;
+        case 0x2: // Vx = Vx & Vy
+            mV[reg(inst)] = mV[reg(inst)] & mV[reg2(inst)];
+            break;
         case 0x3: // Vx = Vx ^ Vy
             mV[reg(inst)] = mV[reg(inst)] ^ mV[reg2(inst)];
+            break;
+        case 0x4: // Vx = Vx + Vy
+            mV[reg(inst)] = mV[reg(inst)] + mV[reg2(inst)];
+            break;
+        case 0x5: // Vx = Vx - Vy
+            mV[reg(inst)] = mV[reg2(inst)] - mV[reg(inst)];
+            // XXX - !borrow
+            mV[0xF] = mV[reg(inst)] > mV[reg2(inst)] ? 0 : 1;
             break;
         case 0x6: // Vx = Vx SHR 1
             mV[reg(inst)] >>= 1;
             break;
+        case 0x7:
+            mV[reg(inst)] = mV[reg2(inst)] - mV[reg(inst)];
+            // XXX - !borrow
+            mV[0xF] = mV[reg(inst)] > mV[reg2(inst)] ? 0 : 1;
+            break;
         case 0xE: // Vx = Vx SHL 1
+            Serial.print("SHL ");
+            Serial.print(mV[reg(inst)], HEX);
             mV[reg(inst)] <<= 1;
+            Serial.print(" -> ");
+            Serial.println(mV[reg(inst)], HEX);
             break;
         default:
             unimpl(inst);
@@ -198,7 +226,7 @@ void Chip8::groupGraphics(uint16_t inst) {
     uint8_t rows = imm4(inst);
     uint8_t x = mV[reg(inst)];
     uint8_t y = mV[reg2(inst)];
-    uint8_t spriteStart = (mI-0x200);
+    uint16_t spriteStart = (mI-0x200);
     Serial.print("DRAW ");
     Serial.print(x);
     Serial.print(", ");
@@ -212,10 +240,13 @@ void Chip8::groupGraphics(uint16_t inst) {
         uint8_t rowData = pgm_read_byte(&mProgram[spriteStart+row]);
         Serial.print("ROW");
         Serial.print(row);
+        Serial.print(" at ");
+        Serial.print(spriteStart+row, HEX);
         Serial.print(" - ");
         Serial.println(rowData, HEX);
         for(int col = 0; col < 8; col++) {
             bool on = rowData&0x80;
+            /*
             Serial.print("PIXEL ");
             Serial.print(x+col);
             Serial.print(", ");
@@ -224,6 +255,7 @@ void Chip8::groupGraphics(uint16_t inst) {
             Serial.print(rowData, HEX);
             Serial.print(" -- ");
             Serial.println(on);
+            */
             mBoy.fillRect(2*(x+col), 2*(y+row), 2,2, on ? WHITE : BLACK);
             rowData<<=1;
         }
@@ -245,81 +277,50 @@ void Chip8::groupKeyboard(uint16_t inst) {
     }
 }
 
-// Look to see if we already have a "memory" entry for
-// this address
-MemCell* Chip8::findM(uint16_t addr) {
-    for(int i = 0; i < mMP; i++) {
-        if (mM[i].addr == addr) {
-            return &mM[i];
-        }
-    }
-    return NULL;
-}
-
-void Chip8::storeM(uint16_t addr, uint8_t val) {
-    MemCell* cell = findM(addr);
-    if(cell == NULL) {
-        mMP++;
-        if(mMP>=127) {
-            Serial.print("OUT OF MEMORY -- ");
-            Serial.println(mMP);
-            return;
-        }
-        mM[mMP] = (MemCell){
-            .addr = addr,
-            .value=val,
-        };
-        Serial.print("CREATE NEW CELL ");
-        Serial.println(mMP, HEX);
-    } else {
-        cell->value = val;
-    }
-    Serial.print("UPDATE ");
-    Serial.print(addr, HEX);
-    Serial.print(" = ");
-    Serial.println(val, HEX);
-}
-
-uint8_t Chip8::readM(uint16_t addr) {
-    MemCell* cell = findM(addr);
-    if(cell != NULL) {
-        Serial.print("FOUND CELL ");
-        Serial.print(addr, HEX);
-        Serial.print(" = ");
-        Serial.println(cell->value, HEX);
-        return cell->value;
-    }
-    uint8_t val = pgm_read_byte(&mProgram[addr-0x200]);
-    Serial.print("NEED FLASH READ ");
-    Serial.print(addr, HEX);
-    Serial.print(" = ");
-    Serial.println(val, HEX);
-    return val;
-}
-
 // 0xFxxx XXX - loady things
 void Chip8::groupLoad(uint16_t inst) {
     uint8_t to = reg(inst);
     switch(inst&0xFF) {
+        case 0x07:
+            mV[to] = mDT;
+            break;
         case 0x1E:
             Serial.print("ADD TO I: ");
-            Serial.println(to);
+            Serial.println(mV[to], HEX);
             mI = mI + mV[to];
             break;
         // Store registers to memory
         case 0x55:
-            for(int i = 0; i < to; i++) {
+            for(int i = 0; i <= to; i++) {
                 Serial.print("MEMORY WRITE ");
+                Serial.print(mWrites++);
+                Serial.print(" ");
                 Serial.print(mI+i, HEX);
                 Serial.print(" = ");
                 Serial.println(mV[i], HEX);
-                storeM(mI+i, mV[i]);
+                if(mI+i < 0xB34) {
+                    Serial.println("Can't write");
+                } else {
+                    mM[mI+i-0xB34] = mV[i];
+                }
             }
             break;
         // Read registers from memory
         case 0x65:
-            for(int i = 0; i < to; i++) {
-                mV[i] = readM(mI+i);
+            for(int i = 0; i <= to; i++) {
+                Serial.print("MEMORY READ "); 
+                Serial.print(i);
+                Serial.print(" FROM ");
+                if(mI + i < 0xB34) {
+                    Serial.print("FLASH - ");
+                    mV[i] = pgm_read_byte(&mProgram[mI+i-0x200]);
+                } else {
+                    Serial.print("RAM - ");
+                    mV[i] = mM[mI+i-0xB34];
+                }
+                Serial.print(mI+i, HEX);
+                Serial.print(" = ");
+                Serial.println(mV[i], HEX);
             }
             break;
         default:
