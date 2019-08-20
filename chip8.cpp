@@ -2,9 +2,31 @@
 #include <Arduino.h>
 
 
+const uint16_t FONT_OFFSET = 0xF * 5;
+const uint8_t font[] PROGMEM = {
+    0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
+    0x20, 0x60, 0x20, 0x20, 0x70, // 1
+    0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+    0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+    0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+    0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+    0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+    0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+    0xF0, 0x10, 0x20, 0x40, 0x40, // 8
+    0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+    0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+    0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+    0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+    0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+    0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+    0xF0, 0x80, 0xF0, 0x80, 0x80, // F
+};
+
 Chip8::Chip8(Arduboy2 &boy) : mBoy(boy) {
     beep.begin();
 }
+
+const uint16_t PROG_OFFSET = 0x2E8;
 
 void Chip8::Load(const uint8_t *program) {
     Serial.println("START PROGRAM");
@@ -48,10 +70,12 @@ void Chip8::Step() {
     }
 
     mPC+=2;
+    /*
     Serial.print("INST ");
     Serial.print(mPC, HEX);
     Serial.print(" - ");
     Serial.println(inst, HEX);
+    */
     uint8_t group = uint8_t(inst >> 12); 
     groupFunc gf = groupFuncs[group];
     (this->*gf)(inst);
@@ -231,12 +255,7 @@ void Chip8::groupRand(uint16_t inst) {
     mV[reg(inst)] = random(1+imm8(inst));
 }
 
-//0xDxxx - draw
-void Chip8::groupGraphics(uint16_t inst) {
-    uint8_t rows = imm4(inst);
-    uint8_t x = mV[reg(inst)];
-    uint8_t y = mV[reg2(inst)];
-    uint16_t spriteStart = (mI-0x200);
+void debugDraw(uint8_t x, uint8_t y, uint8_t rows, uint16_t i) {
     Serial.print("DRAW ");
     Serial.print(x);
     Serial.print(", ");
@@ -244,26 +263,26 @@ void Chip8::groupGraphics(uint16_t inst) {
     Serial.print(" - ");
     Serial.print(rows);
     Serial.print(" rows at ");
-    Serial.println(mI, HEX);
+    Serial.println(i, HEX);
+}
+//0xDxxx - draw
+void Chip8::groupGraphics(uint16_t inst) {
+    uint8_t rows = imm4(inst);
+    uint8_t x = mV[reg(inst)];
+    uint8_t y = mV[reg2(inst)];
+    uint16_t spriteStart = (mI-0x200);
+    //debugDraw(x, y, rows, mI);
 
     mV[0xF] = 0;
     for(int row = 0; row < rows; row++) {
         uint8_t rowData = pgm_read_byte(&mProgram[spriteStart+row]);
-        /*
-        Serial.print("ROW");
-        Serial.print(row);
-        Serial.print(" at ");
-        Serial.print(spriteStart+row, HEX);
-        Serial.print(" - ");
-        Serial.println(rowData, HEX);
-        */
         for(int col = 0; col < 8; col++) {
             bool on = rowData&0x80;
             bool wasOn = false;
             if (mBoy.getPixel(2*(x+col), 2*(y+row)) == WHITE) {
                 wasOn = true;
-                mV[0xF] = 1;
             }
+            mV[0xF] = wasOn && !on;
             mBoy.fillRect(2*(x+col), 2*(y+row), 2,2, wasOn ^ on ? WHITE : BLACK); 
             rowData<<=1;
         }
@@ -276,10 +295,8 @@ void Chip8::groupKeyboard(uint16_t inst) {
     uint8_t key = mV[reg(inst)];
     switch(imm8(inst)) {
         case 0x9E:
-            Serial.println("READ KEY DOWN");
             break;
         case 0xA1:
-            Serial.println("READ KEY UP");
             break;
         default:
             unimpl(inst);
@@ -309,13 +326,20 @@ void Chip8::groupLoad(uint16_t inst) {
             break;
 
         case 0x29:
-            // XXX -built in sprites (digits)
-            unimpl(inst);
+            mI = 5 * mV[to];
             break;
-        case 0x33:
-            // XXX - BCD
-            unimpl(inst);
+        case 0x33: {
+            uint8_t val = mV[to];
+            if(mI+2 < PROG_OFFSET) {
+                Serial.print("can't BCD ");
+                Serial.println(mI);
+                return;
+            }
+            mM[mI] = val / 100;
+            mM[mI+1] = (val / 10) % 10;
+            mM[mI+2] = val % 10;
             break;
+        }
 
         // Store registers to memory
         case 0x55:
@@ -328,10 +352,10 @@ void Chip8::groupLoad(uint16_t inst) {
                 Serial.print(" = ");
                 Serial.println(mV[i], HEX);
                 */
-                if(mI+i < 0xB34) {
+                if(mI+i < PROG_OFFSET) {
                     Serial.println("Can't write");
                 } else {
-                    mM[mI+i-0xB34] = mV[i];
+                    mM[mI+i-PROG_OFFSET] = mV[i];
                 }
             }
             break;
@@ -343,12 +367,14 @@ void Chip8::groupLoad(uint16_t inst) {
                 Serial.print(i);
                 Serial.print(" FROM ");
                 */
-                if(mI + i < 0xB34) {
+                if(mI + i < FONT_OFFSET) {
+                    mV[i] = pgm_read_byte(&font[mI+i]);
+                } else if(mI + i < PROG_OFFSET) {
                     //Serial.print("FLASH - ");
                     mV[i] = pgm_read_byte(&mProgram[mI+i-0x200]);
                 } else {
                     //Serial.print("RAM - ");
-                    mV[i] = mM[mI+i-0xB34];
+                    mV[i] = mM[mI+i-PROG_OFFSET];
                 }
                 /*
                 Serial.print(mI+i, HEX);

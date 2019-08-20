@@ -9,18 +9,23 @@ void setup() {
     boy.begin();
     boy.initRandomSeed();
     Serial.begin(115200);
-    //boy.setFrameRate( 60);
+    boy.setFrameRate( 60);
     emu.Load((const uint8_t*)pgm_read_ptr(&programs[1]));
-    while(!Serial);
+    emu.Reset();
+    //while(!Serial);
 }
 
 void loop() {
 
-    boy.pollButtons();
-    if(boy.pressed(UP_BUTTON) || boy.pressed(DOWN_BUTTON) && boy.pressed(LEFT_BUTTON) && boy.pressed(RIGHT_BUTTON)) {
+    if(!boy.pressed(UP_BUTTON) &&
+            boy.pressed(DOWN_BUTTON) && 
+            boy.pressed(LEFT_BUTTON) && 
+            boy.pressed(RIGHT_BUTTON)) {
         emu.Reset();
     }
 
+    boy.pollButtons();
+    emu.Buttons(boy.buttonsState());
     if(boy.justPressed(A_BUTTON)) {
         emu.Toggle();
     }
