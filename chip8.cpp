@@ -2,7 +2,9 @@
 #include <Arduino.h>
 
 
-Chip8::Chip8(Arduboy2 &boy) : mBoy(boy) {}
+Chip8::Chip8(Arduboy2 &boy) : mBoy(boy) {
+    beep.begin();
+}
 
 void Chip8::Load(const uint8_t *program) {
     Serial.println("START PROGRAM");
@@ -10,10 +12,12 @@ void Chip8::Load(const uint8_t *program) {
 }
 
 void Chip8::Reset() {
+    Serial.println("Reset");
     mWrites = 0;
     mPC = 0x200;
     mSP = 0;
     mRunning = true;
+    mBoy.clear();
 }
 
 bool Chip8::Running() {
@@ -22,6 +26,14 @@ bool Chip8::Running() {
 
 void Chip8::Toggle() {
     mRunning = !mRunning;
+}
+
+void Chip8::Buttons(uint8_t buttons) {
+    beep.timer();
+    if (mWaitKey && buttons) {
+        mWaitKey = false;
+        mRunning = true;
+    }
 }
 
 void Chip8::Step() {
@@ -36,12 +48,10 @@ void Chip8::Step() {
     }
 
     mPC+=2;
-    /*
     Serial.print("INST ");
     Serial.print(mPC, HEX);
     Serial.print(" - ");
     Serial.println(inst, HEX);
-    */
     uint8_t group = uint8_t(inst >> 12); 
     groupFunc gf = groupFuncs[group];
     (this->*gf)(inst);
@@ -143,7 +153,7 @@ void Chip8::groupLdImm(uint16_t inst) {
 
 //0x7xxx add immediate
 void Chip8::groupAddImm(uint16_t inst) {
-    mV[reg(inst)] += (uint8_t)inst;
+    mV[reg(inst)] += imm8(inst);
 }
 
 void Chip8::unimpl(uint16_t inst) {
@@ -227,7 +237,6 @@ void Chip8::groupGraphics(uint16_t inst) {
     uint8_t x = mV[reg(inst)];
     uint8_t y = mV[reg2(inst)];
     uint16_t spriteStart = (mI-0x200);
-    /*
     Serial.print("DRAW ");
     Serial.print(x);
     Serial.print(", ");
@@ -236,8 +245,8 @@ void Chip8::groupGraphics(uint16_t inst) {
     Serial.print(rows);
     Serial.print(" rows at ");
     Serial.println(mI, HEX);
-    */
 
+    mV[0xF] = 0;
     for(int row = 0; row < rows; row++) {
         uint8_t rowData = pgm_read_byte(&mProgram[spriteStart+row]);
         /*
@@ -250,7 +259,12 @@ void Chip8::groupGraphics(uint16_t inst) {
         */
         for(int col = 0; col < 8; col++) {
             bool on = rowData&0x80;
-            mBoy.fillRect(2*(x+col), 2*(y+row), 2,2, on ? WHITE : BLACK);
+            bool wasOn = false;
+            if (mBoy.getPixel(2*(x+col), 2*(y+row)) == WHITE) {
+                wasOn = true;
+                mV[0xF] = 1;
+            }
+            mBoy.fillRect(2*(x+col), 2*(y+row), 2,2, wasOn ^ on ? WHITE : BLACK); 
             rowData<<=1;
         }
     }
@@ -262,9 +276,10 @@ void Chip8::groupKeyboard(uint16_t inst) {
     uint8_t key = mV[reg(inst)];
     switch(imm8(inst)) {
         case 0x9E:
+            Serial.println("READ KEY DOWN");
             break;
         case 0xA1:
-            mPC+=2;
+            Serial.println("READ KEY UP");
             break;
         default:
             unimpl(inst);
@@ -279,15 +294,14 @@ void Chip8::groupLoad(uint16_t inst) {
             mV[to] = mDT;
             break;
         case 0xA:
-            // XXX - await keypress
-            unimpl(inst);
+            mRunning = false;
+            mWaitKey = true;
             break;
         case 0x15:
             mDT = mV[to];
             break;
         case 0x18:
-            // XXX - set sound timer
-            unimpl(inst);
+            beep.tone(beep.freq(880), imm8(inst));
             break;
 
         case 0x1E:

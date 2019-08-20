@@ -17,7 +17,7 @@ class Chip8 {
     // we handle the offset when reading PC
     uint16_t mPC = 0x200;
     uint16_t mI = 0;
-    uint16_t mV[16];
+    uint8_t mV[16];
     uint16_t mStack[16];
     uint8_t mSP = 0;
     uint16_t mDT;
@@ -29,6 +29,7 @@ class Chip8 {
     uint8_t mM[512];
 
     Arduboy2 &mBoy;
+    BeepPin1 beep;
 
     
     // XXX MEMORY HANDLING --
@@ -109,12 +110,14 @@ class Chip8 {
     void unimpl(uint16_t);
 
     uint16_t lastinst;
+    bool mWaitKey;
 
     public:
        Chip8(Arduboy2 &boy);
        void Load(const uint8_t program[]);
        void Reset();
        void Step();
+       void Buttons(uint8_t buttons);
        bool Running();
        void Toggle();
 
