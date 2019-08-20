@@ -26,11 +26,10 @@ Chip8::Chip8(Arduboy2 &boy) : mBoy(boy) {
     beep.begin();
 }
 
-const uint16_t PROG_OFFSET = 0x2E8;
-
-void Chip8::Load(const uint8_t *program) {
+void Chip8::Load(const uint8_t *program, const uint16_t size) {
     Serial.println("START PROGRAM");
     mProgram = program;
+    mProgramSize = size;
 }
 
 void Chip8::Reset() {
@@ -70,12 +69,10 @@ void Chip8::Step() {
     }
 
     mPC+=2;
-    /*
     Serial.print("INST ");
     Serial.print(mPC, HEX);
     Serial.print(" - ");
     Serial.println(inst, HEX);
-    */
     uint8_t group = uint8_t(inst >> 12); 
     groupFunc gf = groupFuncs[group];
     (this->*gf)(inst);
@@ -330,8 +327,8 @@ void Chip8::groupLoad(uint16_t inst) {
             break;
         case 0x33: {
             uint8_t val = mV[to];
-            if(mI+2 < PROG_OFFSET) {
-                Serial.print("can't BCD ");
+            if(mI+2 < mProgramSize) {
+                Serial.print(F("can't BCD "));
                 Serial.println(mI);
                 return;
             }
@@ -352,10 +349,10 @@ void Chip8::groupLoad(uint16_t inst) {
                 Serial.print(" = ");
                 Serial.println(mV[i], HEX);
                 */
-                if(mI+i < PROG_OFFSET) {
-                    Serial.println("Can't write");
+                if(mI+i < mProgramSize) {
+                    Serial.println(F("Can't write"));
                 } else {
-                    mM[mI+i-PROG_OFFSET] = mV[i];
+                    mM[mI+i-mProgramSize] = mV[i];
                 }
             }
             break;
@@ -369,12 +366,12 @@ void Chip8::groupLoad(uint16_t inst) {
                 */
                 if(mI + i < FONT_OFFSET) {
                     mV[i] = pgm_read_byte(&font[mI+i]);
-                } else if(mI + i < PROG_OFFSET) {
+                } else if(mI + i < mProgramSize) {
                     //Serial.print("FLASH - ");
                     mV[i] = pgm_read_byte(&mProgram[mI+i-0x200]);
                 } else {
                     //Serial.print("RAM - ");
-                    mV[i] = mM[mI+i-PROG_OFFSET];
+                    mV[i] = mM[mI+i-mProgramSize];
                 }
                 /*
                 Serial.print(mI+i, HEX);

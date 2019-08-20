@@ -10,6 +10,7 @@ class Chip8 {
     
 
     const uint8_t *mProgram;
+    uint16_t mProgramSize;
     void run();
     
     // registers
@@ -114,7 +115,7 @@ class Chip8 {
 
     public:
        Chip8(Arduboy2 &boy);
-       void Load(const uint8_t program[]);
+       void Load(const uint8_t program[], uint16_t size);
        void Reset();
        void Step();
        void Buttons(uint8_t buttons);

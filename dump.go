@@ -118,12 +118,12 @@ func disasm(inst uint16) string {
 	return ""
 }
 
-func dump(dir, name string) error {
+func dump(dir, name string) (int, error) {
 	fmt.Printf("const uint8_t %s[] PROGMEM = {\n", name)
 	defer fmt.Println("};\n\n")
 	f, err := os.Open(filepath.Join(dir, name))
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	pc := 0x200
@@ -131,9 +131,9 @@ func dump(dir, name string) error {
 		var inst [2]byte
 		if err := binary.Read(f, binary.BigEndian, &inst); err != nil {
 			if err == io.EOF {
-				return nil
+				break
 			}
-			return err
+			return 0, err
 		}
 		fmt.Printf("    0x%02X, 0x%02X,   //0x%04X ", inst[0], inst[1], pc)
 		inst16 := uint16(inst[1])
@@ -141,7 +141,12 @@ func dump(dir, name string) error {
 		fmt.Println(disasm(inst16))
 		pc += 2
 	}
-	return nil
+	return pc, nil
+}
+
+type program struct {
+	name string
+	size int
 }
 
 func dumpAllRoms(dir string) {
@@ -149,16 +154,25 @@ func dumpAllRoms(dir string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-
+	fmt.Println("struct Program {")
+	fmt.Println("    const char* name;")
+	fmt.Println("    const uint8_t *code;")
+	fmt.Println("    const uint16_t size;")
+	fmt.Println("};")
+	var ps []program
 	for _, file := range files {
-		if err := dump(dir, file.Name()); err != nil {
+		size, err := dump(dir, file.Name())
+		if err != nil {
 			log.Println(err)
+			continue
 		}
+		ps = append(ps, program{name: file.Name(), size: size})
 	}
 
-	fmt.Println("const uint8_t * const programs[] PROGMEM = {")
-	for _, file := range files {
-		fmt.Println("    " + file.Name() + ",")
+	fmt.Printf("const uint8_t PROGRAM_COUNT = %d;\n", len(ps))
+	fmt.Println("const Program programs[] PROGMEM = {")
+	for _, p := range ps {
+		fmt.Printf("    (Program){ .name=\"%s\", .code=%s, .size=%d },\n", p.name, p.name, p.size)
 	}
 	fmt.Println("};")
 }
