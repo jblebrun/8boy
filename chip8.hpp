@@ -112,6 +112,8 @@ class Chip8 {
     void unimpl(uint16_t);
 
     uint16_t lastinst;
+    uint16_t mButtons = 0;
+
     bool mWaitKey;
 
     public:

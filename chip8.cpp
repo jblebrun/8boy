@@ -54,6 +54,8 @@ void Chip8::Buttons(uint8_t buttons) {
     if(mDT > 0) {
         mDT--;
     }
+    
+    mButtons = buttons;
     if (mWaitKey && buttons) {
         mWaitKey = false;
         mRunning = true;
@@ -293,10 +295,17 @@ void Chip8::groupGraphics(uint16_t inst) {
 // 0xExxx XXX -keyboard to keys
 void Chip8::groupKeyboard(uint16_t inst) {
     uint8_t key = mV[reg(inst)];
+    uint16_t mask = 0x01 << key;
     switch(imm8(inst)) {
         case 0x9E:
+            if(mButtons & mask) {
+                mPC += 2;
+            }
             break;
         case 0xA1:
+            if(!(mButtons & mask)) {
+                mPC += 2;
+            }
             break;
         default:
             unimpl(inst);

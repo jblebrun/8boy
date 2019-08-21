@@ -27,9 +27,6 @@ void runEmu() {
 
     boy.pollButtons();
     emu.Buttons(boy.buttonsState());
-    if(boy.justPressed(A_BUTTON)) {
-        emu.Toggle();
-    }
     if(emu.Running()) {
         emu.Step();
     }
@@ -37,7 +34,7 @@ void runEmu() {
 
 const char name[] PROGMEM = "NAME";
 void loop() {
-
+delay(1);
     if (program == NULL) {
         boy.clear();
         boy.setCursor(0,0);
