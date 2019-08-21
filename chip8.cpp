@@ -212,20 +212,16 @@ void Chip8::groupALU(uint16_t inst) {
             mV[reg(inst)] = result_carry;
             break;
         case 0x5: // Vx = Vx - Vy
-            result_carry = mV[reg2(inst)] - mV[reg(inst)];
-            mV[reg(inst)] = result_carry;
-            // VF = NOT borrow
-            mV[0xF] = result_carry & 0xFF ? 0 : 1;
+            mV[0xF] = mV[reg(inst)] > mV[reg2(inst)]; 
+            mV[reg(inst)] = mV[reg(inst)] - mV[reg2(inst)];
             break;
         case 0x6: // Vx = Vx SHR 1
             mV[0xF] = result_carry&0x1;
             mV[reg(inst)] >>= 1;
             break;
         case 0x7:
-            result_carry = mV[reg2(inst)] - mV[reg(inst)];
-            mV[reg(inst)] = result_carry;
-            // VF = NOT borrow
-            mV[0xF] = result_carry & 0xFF ? 0 : 1;
+            mV[0xF] = mV[reg2(inst)] > mV[reg(inst)]; 
+            mV[reg(inst)] = mV[reg2(inst)] - mV[reg(inst)];
             break;
         case 0xE: // Vx = Vx SHL 1
             mV[0xF] = result_carry&0x8;
@@ -275,20 +271,20 @@ void Chip8::groupGraphics(uint16_t inst) {
     uint8_t x = mV[reg(inst)];
     uint8_t y = mV[reg2(inst)];
 
-    mV[0xF] = 0;
+    bool collide = false;
+
     for(int row = 0; row < rows; row++) {
         uint8_t rowData = readMem(mI+row);
         for(int col = 0; col < 8; col++) {
             bool on = rowData&0x80;
-            bool wasOn = false;
-            if (mBoy.getPixel(2*(x+col), 2*(y+row)) == WHITE) {
-                wasOn = true;
-            }
-            mV[0xF] = wasOn && !on;
-            mBoy.fillRect(2*(x+col), 2*(y+row), 2,2, wasOn ^ on ? WHITE : BLACK); 
+            bool wasOn = (mBoy.getPixel(2*(x+col), 2*(y+row)) == WHITE);
+            uint8_t newColor = wasOn ^ on ? WHITE : BLACK;
+            collide |= (wasOn & on) ? 1 : 0;
+            mBoy.fillRect(2*(x+col), 2*(y+row), 2,2, newColor); 
             rowData<<=1;
         }
     }
+    mV[0xF] = collide;
     mBoy.display();
 }
 
@@ -364,11 +360,6 @@ void Chip8::groupLoad(uint16_t inst) {
             break;
         case 0x33: {
             uint8_t val = mV[to];
-            if(mI+2 < mProgramSize) {
-                Serial.print(F("can't BCD "));
-                Serial.println(mI);
-                return;
-            }
             writeMem(mI, val/100);
             writeMem(mI+1, (val/10)%10);
             writeMem(mI+2, val%10);

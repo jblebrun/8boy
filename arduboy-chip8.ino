@@ -34,7 +34,7 @@ void runEmu() {
 
 const char name[] PROGMEM = "NAME";
 void loop() {
-delay(1);
+    delay(1);
     if (program == NULL) {
         boy.clear();
         boy.setCursor(0,0);
