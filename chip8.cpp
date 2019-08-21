@@ -51,6 +51,9 @@ void Chip8::Toggle() {
 
 void Chip8::Buttons(uint8_t buttons) {
     beep.timer();
+    if(mDT > 0) {
+        mDT--;
+    }
     if (mWaitKey && buttons) {
         mWaitKey = false;
         mRunning = true;
@@ -68,11 +71,11 @@ void Chip8::Step() {
         return;
     }
 
-    mPC+=2;
     Serial.print("INST ");
     Serial.print(mPC, HEX);
     Serial.print(" - ");
     Serial.println(inst, HEX);
+    mPC+=2;
     uint8_t group = uint8_t(inst >> 12); 
     groupFunc gf = groupFuncs[group];
     (this->*gf)(inst);

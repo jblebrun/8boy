@@ -35,27 +35,19 @@ void runEmu() {
     }
 }
 
+const char name[] PROGMEM = "NAME";
 void loop() {
+
     if (program == NULL) {
         boy.clear();
         boy.setCursor(0,0);
-        boy.print(F("Select"));
+        boy.print(F("Select:"));
         boy.setCursor(0,30);
         boy.print(pidx);
         boy.print(" ");
-        uint8_t i = 0;
-        while (true) {
-            char ch = (char)pgm_read_byte(&(programs[pidx].name) + i);
-            if(ch == 0) {
-                break;
-            }
-            boy.print(ch);
-            i++;
-            if(i > 10) {
-                break;
-            }
-        }
-        boy.print(programs[pidx].name);
+        char buffer[10];
+        strcpy_P(buffer, (const char*)pgm_read_ptr(&programs[pidx].name));
+        boy.print(buffer);
         boy.display();
     
         boy.pollButtons();
@@ -73,8 +65,8 @@ void loop() {
         }
         if(boy.justPressed(A_BUTTON)) {
             program = &programs[pidx];
-            uint16_t size = pgm_read_word(&programs[pidx].size);
-            const uint8_t* code = pgm_read_ptr(&(programs[pidx].code));
+            uint16_t size = pgm_read_word(&(program->size));
+            const uint8_t* code = pgm_read_ptr(&(program->code));
             emu.Load(code, size);
             emu.Reset();
             

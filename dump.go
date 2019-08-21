@@ -132,8 +132,11 @@ func dump(dir, name string) (int, error) {
 		if err := binary.Read(f, binary.BigEndian, &inst); err != nil {
 			if err == io.EOF {
 				break
+			} else if err == io.ErrUnexpectedEOF {
+				log.Println("odd bytes in", name)
+			} else {
+				return 0, err
 			}
-			return 0, err
 		}
 		fmt.Printf("    0x%02X, 0x%02X,   //0x%04X ", inst[0], inst[1], pc)
 		inst16 := uint16(inst[1])
@@ -155,7 +158,7 @@ func dumpAllRoms(dir string) {
 		log.Fatal(err)
 	}
 	fmt.Println("struct Program {")
-	fmt.Println("    const char* name;")
+	fmt.Println("    const char *name;")
 	fmt.Println("    const uint8_t *code;")
 	fmt.Println("    const uint16_t size;")
 	fmt.Println("};")
@@ -170,9 +173,12 @@ func dumpAllRoms(dir string) {
 	}
 
 	fmt.Printf("const uint8_t PROGRAM_COUNT = %d;\n", len(ps))
+	for _, p := range ps {
+		fmt.Printf("const char n%s[] PROGMEM = \"%s\";\n", p.name, p.name)
+	}
 	fmt.Println("const Program programs[] PROGMEM = {")
 	for _, p := range ps {
-		fmt.Printf("    (Program){ .name=\"%s\", .code=%s, .size=%d },\n", p.name, p.name, p.size)
+		fmt.Printf("    (Program){ .name=n%s, .code=%s, .size=%d },\n", p.name, p.name, p.size)
 	}
 	fmt.Println("};")
 }
