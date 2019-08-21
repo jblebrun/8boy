@@ -305,10 +305,6 @@ void Chip8::groupKeyboard(uint16_t inst) {
 
 uint8_t Chip8::readMem(uint16_t addr) {
     if(addr < FONT_OFFSET) {
-        Serial.print("READ FONT");
-        Serial.print(mI);
-        Serial.print(", ");
-        Serial.println(addr);
         return pgm_read_byte(&font[addr]);
     } else if(addr < mProgramSize) {
         //Serial.print("FLASH - ");
@@ -319,7 +315,19 @@ uint8_t Chip8::readMem(uint16_t addr) {
     }
 }
 
-// 0xFxxx XXX - loady things
+void Chip8::writeMem(uint16_t addr, uint8_t val) {
+    if(addr < mProgramSize) {
+        Serial.print("CAN NOT WRITE ");
+        Serial.println(addr, HEX);
+    } else {
+        Serial.print("WRITE ");
+        Serial.print(addr, HEX);
+        Serial.print(" = ");
+        Serial.println(val, HEX);
+        mM[addr-mProgramSize] = val;
+    }
+}
+
 void Chip8::groupLoad(uint16_t inst) {
     uint8_t to = reg(inst);
     switch(inst&0xFF) {
@@ -352,9 +360,9 @@ void Chip8::groupLoad(uint16_t inst) {
                 Serial.println(mI);
                 return;
             }
-            mM[mI] = val / 100;
-            mM[mI+1] = (val / 10) % 10;
-            mM[mI+2] = val % 10;
+            writeMem(mI, val/100);
+            writeMem(mI+1, (val/10)%10);
+            writeMem(mI+2, val%10);
             break;
         }
 
@@ -369,12 +377,7 @@ void Chip8::groupLoad(uint16_t inst) {
                 Serial.print(" = ");
                 Serial.println(mV[i], HEX);
                 */
-                if(mI+i < mProgramSize) {
-                    Serial.print(F("Can't write - "));
-                    Serial.println(mI+i, HEX);
-                } else {
-                    mM[mI+i-mProgramSize] = mV[i];
-                }
+                writeMem(mI+i, mV[i]);
             }
             break;
         // Read registers from memory

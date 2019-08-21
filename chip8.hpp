@@ -107,6 +107,7 @@ class Chip8 {
     void groupLoad(uint16_t);
 
     uint8_t readMem(uint16_t);
+    void writeMem(uint16_t, uint8_t);
 
     void unimpl(uint16_t);
 
