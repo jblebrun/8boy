@@ -2,7 +2,7 @@
 #include <Arduino.h>
 
 
-const uint16_t FONT_OFFSET = 0xF * 5;
+const uint16_t FONT_OFFSET = 0x10 * 5;
 const uint8_t font[] PROGMEM = {
     0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
     0x20, 0x60, 0x20, 0x20, 0x70, // 1
@@ -12,7 +12,7 @@ const uint8_t font[] PROGMEM = {
     0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
     0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
     0xF0, 0x10, 0x20, 0x40, 0x40, // 7
-    0xF0, 0x10, 0x20, 0x40, 0x40, // 8
+    0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
     0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
     0xF0, 0x90, 0xF0, 0x90, 0x90, // A
     0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
@@ -71,10 +71,12 @@ void Chip8::Step() {
         return;
     }
 
+    /*
     Serial.print("INST ");
     Serial.print(mPC, HEX);
     Serial.print(" - ");
     Serial.println(inst, HEX);
+    */
     mPC+=2;
     uint8_t group = uint8_t(inst >> 12); 
     groupFunc gf = groupFuncs[group];
@@ -270,12 +272,10 @@ void Chip8::groupGraphics(uint16_t inst) {
     uint8_t rows = imm4(inst);
     uint8_t x = mV[reg(inst)];
     uint8_t y = mV[reg2(inst)];
-    uint16_t spriteStart = (mI-0x200);
-    //debugDraw(x, y, rows, mI);
 
     mV[0xF] = 0;
     for(int row = 0; row < rows; row++) {
-        uint8_t rowData = pgm_read_byte(&mProgram[spriteStart+row]);
+        uint8_t rowData = readMem(mI+row);
         for(int col = 0; col < 8; col++) {
             bool on = rowData&0x80;
             bool wasOn = false;
@@ -303,6 +303,22 @@ void Chip8::groupKeyboard(uint16_t inst) {
     }
 }
 
+uint8_t Chip8::readMem(uint16_t addr) {
+    if(addr < FONT_OFFSET) {
+        Serial.print("READ FONT");
+        Serial.print(mI);
+        Serial.print(", ");
+        Serial.println(addr);
+        return pgm_read_byte(&font[addr]);
+    } else if(addr < mProgramSize) {
+        //Serial.print("FLASH - ");
+        return pgm_read_byte(&mProgram[addr-0x200]);
+    } else {
+        //Serial.print("RAM - ");
+        return mM[addr-mProgramSize];
+    }
+}
+
 // 0xFxxx XXX - loady things
 void Chip8::groupLoad(uint16_t inst) {
     uint8_t to = reg(inst);
@@ -326,6 +342,7 @@ void Chip8::groupLoad(uint16_t inst) {
             break;
 
         case 0x29:
+            
             mI = 5 * mV[to];
             break;
         case 0x33: {
@@ -353,7 +370,8 @@ void Chip8::groupLoad(uint16_t inst) {
                 Serial.println(mV[i], HEX);
                 */
                 if(mI+i < mProgramSize) {
-                    Serial.println(F("Can't write"));
+                    Serial.print(F("Can't write - "));
+                    Serial.println(mI+i, HEX);
                 } else {
                     mM[mI+i-mProgramSize] = mV[i];
                 }
@@ -362,25 +380,7 @@ void Chip8::groupLoad(uint16_t inst) {
         // Read registers from memory
         case 0x65:
             for(int i = 0; i <= to; i++) {
-                /*
-                Serial.print("MEMORY READ "); 
-                Serial.print(i);
-                Serial.print(" FROM ");
-                */
-                if(mI + i < FONT_OFFSET) {
-                    mV[i] = pgm_read_byte(&font[mI+i]);
-                } else if(mI + i < mProgramSize) {
-                    //Serial.print("FLASH - ");
-                    mV[i] = pgm_read_byte(&mProgram[mI+i-0x200]);
-                } else {
-                    //Serial.print("RAM - ");
-                    mV[i] = mM[mI+i-mProgramSize];
-                }
-                /*
-                Serial.print(mI+i, HEX);
-                Serial.print(" = ");
-                Serial.println(mV[i], HEX);
-                */
+                mV[i] = readMem(mI+i);
             }
             break;
         default:

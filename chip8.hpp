@@ -87,8 +87,6 @@ class Chip8 {
 
         // Fxxx - single register load/add group
         &Chip8::groupLoad,
-        
-        
     };
     
     void groupSys(uint16_t);
@@ -107,6 +105,8 @@ class Chip8 {
     void groupGraphics(uint16_t);
     void groupKeyboard(uint16_t);
     void groupLoad(uint16_t);
+
+    uint8_t readMem(uint16_t);
 
     void unimpl(uint16_t);
 
