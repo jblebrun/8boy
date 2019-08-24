@@ -23,6 +23,8 @@ class Chip8 {
     uint8_t mSP = 0;
     uint16_t mDT;
 
+    bool mHires = false;
+
     uint16_t mWrites = 0;
 
     bool mRunning = false;
@@ -124,6 +126,9 @@ class Chip8 {
     uint16_t mButtons = 0;
 
     bool mWaitKey;
+
+    void scrollLeft();
+    void scrollRight();
 
     public:
        Chip8(Arduboy2 &boy);

@@ -22,6 +22,40 @@ const uint8_t font[] PROGMEM = {
     0xF0, 0x80, 0xF0, 0x80, 0x80, // F
 };
 
+const uint8_t fonthi[] PROGMEM = {
+    0xF0, 0xF0, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0xF0, 0xF0, // 0
+    0x20, 0x60, 0x20, 0x20, 0x70, // 1
+    0x20, 0x60, 0x20, 0x20, 0x70, // 1
+    0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+    0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+    0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+    0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+    0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+    0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+    0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+    0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+    0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+    0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+    0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+    0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+    0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
+    0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
+    0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+    0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+    0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+    0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+    0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+    0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+    0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+    0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+    0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+    0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+    0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+    0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+    0xF0, 0x80, 0xF0, 0x80, 0x80, // F
+    0xF0, 0x80, 0xF0, 0x80, 0x80, // F
+};
+
 Chip8::Chip8(Arduboy2 &boy) : mBoy(boy) {
     beep.begin();
 }
@@ -39,6 +73,7 @@ void Chip8::Reset() {
     mSP = 0;
     mRunning = true;
     mBoy.clear();
+    mHires = false;
 }
 
 bool Chip8::Running() {
@@ -127,6 +162,22 @@ void Chip8::groupSys(uint16_t inst) {
             //Serial.println(mPC, HEX);
 
             break;
+        case 0xFB:
+            scrollRight();
+            break;
+        case 0xFC:
+            scrollLeft();
+            break; 
+        case 0xFD:
+            mRunning = false;
+            break;
+        case 0x00FE:
+            mHires = false;
+            break;
+        case 0x00FF:
+            mHires = true;
+            break;
+            
         default:
             unimpl(inst);
     }
@@ -260,24 +311,50 @@ void Chip8::groupGraphics(uint16_t inst) {
     uint8_t rows = imm4(inst);
     uint8_t x = mV[reg(inst)];
     uint8_t y = mV[reg2(inst)];
+    uint8_t cols = 8;
+    uint16_t mask = 0x80;
+    if(rows == 0 && mHires) {
+       rows = 16;
+       mask = 0x8000;
+       cols = 16;
+    }
 
     bool collide = false;
 
+    Serial.print(mPC-2, HEX);
+    Serial.print("-- DRAW ");
+    Serial.print(mI, HEX);
+    Serial.print(", ");
+    Serial.print(rows);
+    Serial.print(" at ");
+    Serial.print(x);
+    Serial.print(", ");
+    Serial.println(y);
+    uint8_t scale = mHires ? 1 : 2;
     mV[0xF] = 0;
     for(int row = 0; row < rows; row++) {
-        uint8_t rowData = readMem(mI+row);
-        for(int col = 0; col < 8; col++) {
-            bool on = rowData&0x80;
-            uint8_t py = 2*((y+row)%32);
-            uint8_t px = 2*((x+col)%64);
+        uint16_t rowData;
+        if(mHires && rows == 16) {
+            rowData = readMem(mI+row*2);
+            rowData <<= 8;
+            rowData |= readMem(mI+row*2+1);
+        } else {
+            rowData = readMem(mI+row);
+        }
+        for(int col = 0; col < cols; col++) {
+            bool on = rowData&mask;
+            uint8_t py = scale*((y+row)%(64/scale));
+            uint8_t px = scale*((x+col)%(128*scale));
 
             bool wasOn = (mBoy.getPixel(px, py) == WHITE);
             uint8_t newColor = wasOn ^ on ? WHITE : BLACK;
             mV[0xF] |= (wasOn & on) ? 1 : 0;
             mBoy.drawPixel(px,py, newColor);
-            mBoy.drawPixel(px+1,py, newColor);
-            mBoy.drawPixel(px,py+1, newColor);
-            mBoy.drawPixel(px+1,py+1, newColor);
+            if(!mHires) {
+                mBoy.drawPixel(px+1,py, newColor);
+                mBoy.drawPixel(px,py+1, newColor);
+                mBoy.drawPixel(px+1,py+1, newColor);
+            }
             // 
             rowData<<=1;
 
@@ -313,7 +390,11 @@ uint8_t Chip8::readMem(uint16_t addr) {
         return val;
     }
     if(addr < FONT_OFFSET) {
-        return pgm_read_byte(&font[addr]);
+        if(mHires) {
+            return pgm_read_byte(&fonthi[addr]);
+        } else {
+            return pgm_read_byte(&font[addr]);
+        }
     } else if(addr < mProgramSize) {
         return pgm_read_byte(&mProgram[addr-0x200]);
     } else {
@@ -386,9 +467,12 @@ void Chip8::groupLoad(uint16_t inst) {
             break;
 
         case 0x29:
-            
             mI = 5 * mV[to];
             break;
+        case 0x30:
+            mI = 10 * mV[to];
+            break;
+
         case 0x33: {
             uint8_t val = mV[to];
             writeMem(mI, val/100);
@@ -417,8 +501,27 @@ void Chip8::groupLoad(uint16_t inst) {
                 mV[i] = readMem(mI+i);
             }
             break;
+
         default:
             unimpl(inst);
     }
+}
+
+void Chip8::scrollLeft() {
+    unsigned long st = millis();
+    for(int col = 0; col < 128; col++) {
+        for(int row = 0; row < 64; row++) {
+            uint8_t color = mBoy.getPixel((col+4)%128, row);
+            mBoy.drawPixel(col, row, color);
+        }
+    }
+    unsigned long et = millis();
+    Serial.print("SCROLL IN ");
+    Serial.println(et-st);
+    mBoy.display();
+}
+
+void Chip8::scrollRight() {
+    unimpl(mPC);
 }
 

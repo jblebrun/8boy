@@ -11,11 +11,11 @@ import (
 )
 
 func xy4(op string, inst uint16) string {
-	return fmt.Sprintf("%s V%d, V%d (%d)", op, inst>>8&0xF, inst>>4&0xF, inst&0xF)
+	return fmt.Sprintf("%s V%X, V%X (%d)", op, inst>>8&0xF, inst>>4&0xF, inst&0xF)
 }
 
 func xy(op string, inst uint16) string {
-	return fmt.Sprintf("%s V%d, V%d", op, inst>>8&0xF, inst>>4&0xF)
+	return fmt.Sprintf("%s V%X, V%d", op, inst>>8&0xF, inst>>4&0xF)
 }
 
 func x8(op string, inst uint16) string {
