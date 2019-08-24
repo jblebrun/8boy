@@ -317,26 +317,49 @@ void Chip8::groupKeyboard(uint16_t inst) {
 }
 
 uint8_t Chip8::readMem(uint16_t addr) {
+    uint8_t val;
+    if(readCell(addr, &val)) {
+        writeCell(addr, val);
+        return val;
+    }
     if(addr < FONT_OFFSET) {
         return pgm_read_byte(&font[addr]);
     } else if(addr < mProgramSize) {
-        //Serial.print("FLASH - ");
         return pgm_read_byte(&mProgram[addr-0x200]);
     } else {
-        //Serial.print("RAM - ");
         return mM[addr-mProgramSize];
     }
 }
 
+bool Chip8::readCell(uint16_t addr, uint8_t *val) {
+    for(int i = 0; i < mCellIndex; i++) {
+        if(mCellAddrs[i] == addr) {
+            *val = mCellValues[i];
+            return true;
+        }
+    }
+    return false;
+}
+
+void Chip8::writeCell(uint16_t addr, uint8_t val) {
+    for(int i = 0; i < mCellIndex; i++) {
+        if(mCellAddrs[i] == addr) {
+            mCellValues[i] = val;
+            return; 
+        }
+    }
+    if(mCellIndex >= MAX_CELLS) {
+        Serial.println(F("NO MORE CELLS"));
+        return;
+    }
+    mCellAddrs[mCellIndex] = addr;
+    mCellValues[mCellIndex++] = val;
+}
+
 void Chip8::writeMem(uint16_t addr, uint8_t val) {
     if(addr < mProgramSize) {
-        Serial.print("CAN NOT WRITE ");
-        Serial.println(addr, HEX);
+        writeCell(addr, val);
     } else {
-        Serial.print("WRITE ");
-        Serial.print(addr, HEX);
-        Serial.print(" = ");
-        Serial.println(val, HEX);
         mM[addr-mProgramSize] = val;
     }
 }

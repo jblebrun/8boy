@@ -17,6 +17,7 @@ uint8_t pidx;
 const Program *program;
 
 void runEmu() {
+    delay(1);
     if(boy.pressed(UP_BUTTON) &&
             boy.pressed(DOWN_BUTTON) && 
             boy.pressed(LEFT_BUTTON) && 
@@ -26,15 +27,16 @@ void runEmu() {
     }
 
     boy.pollButtons();
+    if(boy.justPressed(A_BUTTON)) {
+        emu.Toggle();
+    }
     emu.Buttons(boy.buttonsState());
     if(emu.Running()) {
         emu.Step();
     }
 }
 
-const char name[] PROGMEM = "NAME";
 void loop() {
-    delay(1);
     if (program == NULL) {
         boy.clear();
         boy.setCursor(0,0);

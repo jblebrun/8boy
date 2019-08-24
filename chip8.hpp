@@ -29,6 +29,14 @@ class Chip8 {
 
     uint8_t mM[512];
 
+#define MAX_CELLS 32
+    uint8_t mCellIndex = 0;
+    uint16_t mCellAddrs[MAX_CELLS];
+    uint8_t mCellValues[MAX_CELLS];
+
+    bool readCell(uint16_t, uint8_t*);
+    void writeCell(uint16_t, uint8_t);
+
     Arduboy2 &mBoy;
     BeepPin1 beep;
 
