@@ -216,15 +216,15 @@ void Chip8::groupALU(uint16_t inst) {
             mV[reg(inst)] = mV[reg(inst)] - mV[reg2(inst)];
             break;
         case 0x6: // Vx = Vx SHR 1
-            mV[0xF] = result_carry&0x1;
+            mV[0xF] = mV[reg(inst)]&0x1;
             mV[reg(inst)] >>= 1;
             break;
-        case 0x7:
+        case 0x7: // Vx = Vy - Vx
             mV[0xF] = mV[reg2(inst)] > mV[reg(inst)]; 
             mV[reg(inst)] = mV[reg2(inst)] - mV[reg(inst)];
             break;
         case 0xE: // Vx = Vx SHL 1
-            mV[0xF] = result_carry&0x8;
+            mV[0xF] = mV[reg(inst)]&0x8;
             mV[reg(inst)] <<= 1;
             break;
         default:
@@ -273,18 +273,26 @@ void Chip8::groupGraphics(uint16_t inst) {
 
     bool collide = false;
 
+    mV[0xF] = 0;
     for(int row = 0; row < rows; row++) {
         uint8_t rowData = readMem(mI+row);
         for(int col = 0; col < 8; col++) {
             bool on = rowData&0x80;
-            bool wasOn = (mBoy.getPixel(2*(x+col), 2*(y+row)) == WHITE);
+            uint8_t py = 2*((y+row)%32);
+            uint8_t px = 2*((x+col)%64);
+
+            bool wasOn = (mBoy.getPixel(px, py) == WHITE);
             uint8_t newColor = wasOn ^ on ? WHITE : BLACK;
-            collide |= (wasOn & on) ? 1 : 0;
-            mBoy.fillRect(2*(x+col), 2*(y+row), 2,2, newColor); 
+            mV[0xF] |= (wasOn & on) ? 1 : 0;
+            mBoy.drawPixel(px,py, newColor);
+            mBoy.drawPixel(px+1,py, newColor);
+            mBoy.drawPixel(px,py+1, newColor);
+            mBoy.drawPixel(px+1,py+1, newColor);
+            // 
             rowData<<=1;
+
         }
     }
-    mV[0xF] = collide;
     mBoy.display();
 }
 

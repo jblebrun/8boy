@@ -42,7 +42,7 @@ void loop() {
         boy.setCursor(0,30);
         boy.print(pidx);
         boy.print(" ");
-        char buffer[10];
+        char buffer[16];
         strcpy_P(buffer, (const char*)pgm_read_ptr(&programs[pidx].name));
         boy.print(buffer);
         boy.display();
