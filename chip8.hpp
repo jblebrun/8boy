@@ -27,9 +27,10 @@ class Chip8 {
 
     bool mRunning = false;
 
-    uint8_t mM[512];
+#define MEM_SIZE 512
+    uint8_t mM[MEM_SIZE];
 
-#define MAX_CELLS 32
+#define MAX_CELLS 16
     uint8_t mCellIndex = 0;
     uint16_t mCellAddrs[MAX_CELLS];
     uint8_t mCellValues[MAX_CELLS];

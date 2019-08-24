@@ -16,8 +16,13 @@ void setup() {
 uint8_t pidx;
 const Program *program;
 
+unsigned long next = 0;
 void runEmu() {
-    delay(1);
+    unsigned long t = micros();
+    if(t < next) {
+        return;
+    }
+    next = t + 100;
     if(boy.pressed(UP_BUTTON) &&
             boy.pressed(DOWN_BUTTON) && 
             boy.pressed(LEFT_BUTTON) && 

@@ -208,7 +208,7 @@ void Chip8::groupALU(uint16_t inst) {
             break;
         case 0x4: // Vx = Vx + Vy
             result_carry = mV[reg(inst)] + mV[reg2(inst)];
-            mV[0xF] = result_carry & 0xFF00 ? 1 : 0;
+            mV[0xF] = result_carry > 0x00FF ? 1 : 0;
             mV[reg(inst)] = result_carry;
             break;
         case 0x5: // Vx = Vx - Vy
@@ -216,7 +216,7 @@ void Chip8::groupALU(uint16_t inst) {
             mV[reg(inst)] = mV[reg(inst)] - mV[reg2(inst)];
             break;
         case 0x6: // Vx = Vx SHR 1
-            mV[0xF] = mV[reg(inst)]&0x1;
+            mV[0xF] = mV[reg(inst)]&0x1 ? 1 : 0;
             mV[reg(inst)] >>= 1;
             break;
         case 0x7: // Vx = Vy - Vx
@@ -224,7 +224,7 @@ void Chip8::groupALU(uint16_t inst) {
             mV[reg(inst)] = mV[reg2(inst)] - mV[reg(inst)];
             break;
         case 0xE: // Vx = Vx SHL 1
-            mV[0xF] = mV[reg(inst)]&0x8;
+            mV[0xF] = mV[reg(inst)]&0x8 ? 1 : 0;
             mV[reg(inst)] <<= 1;
             break;
         default:
@@ -255,16 +255,6 @@ void Chip8::groupRand(uint16_t inst) {
     mV[reg(inst)] = random(1+imm8(inst));
 }
 
-void debugDraw(uint8_t x, uint8_t y, uint8_t rows, uint16_t i) {
-    Serial.print("DRAW ");
-    Serial.print(x);
-    Serial.print(", ");
-    Serial.print(y);
-    Serial.print(" - ");
-    Serial.print(rows);
-    Serial.print(" rows at ");
-    Serial.println(i, HEX);
-}
 //0xDxxx - draw
 void Chip8::groupGraphics(uint16_t inst) {
     uint8_t rows = imm4(inst);
@@ -327,6 +317,11 @@ uint8_t Chip8::readMem(uint16_t addr) {
     } else if(addr < mProgramSize) {
         return pgm_read_byte(&mProgram[addr-0x200]);
     } else {
+        if(addr-mProgramSize > MEM_SIZE) {
+            Serial.print("OVER READ ");
+            Serial.print(addr, HEX);
+            mRunning = false;
+        }
         return mM[addr-mProgramSize];
     }
 }
@@ -360,6 +355,11 @@ void Chip8::writeMem(uint16_t addr, uint8_t val) {
     if(addr < mProgramSize) {
         writeCell(addr, val);
     } else {
+        if(addr-mProgramSize > MEM_SIZE) {
+            Serial.print("OVERWRITE ");
+            Serial.println(addr, HEX);
+            mRunning = false;
+        }
         mM[addr-mProgramSize] = val;
     }
 }
