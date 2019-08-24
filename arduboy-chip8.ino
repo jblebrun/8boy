@@ -15,7 +15,7 @@ void setup() {
 
 uint8_t pidx;
 const Program *program;
-const uint8_t keymap[3] = {0x12, 0x3C, 0xAB};
+uint8_t keymap[3] = {0x12, 0x3C, 0xAB};
 
 unsigned long next = 0;
 void runEmu() {
@@ -87,6 +87,12 @@ void runLoader() {
         program = &programs[pidx];
         uint16_t size = pgm_read_word(&(program->size));
         const uint8_t* code = pgm_read_ptr(&(program->code));
+        for(int i = 0; i < 3; i++) {
+            keymap[i] = pgm_read_byte(&keymaps[pidx][i]);
+            Serial.print(keymap[i], HEX);
+            Serial.print("   ");
+        }
+        Serial.println("");
         emu.Load(code, size);
         emu.Reset();
 

@@ -163,6 +163,41 @@ type program struct {
 	codename string
 	size     int
 	super    bool
+	keymap   string
+}
+
+// Load key map as six bytes to write out as array literal:
+// 0xUD, 0xLR, 0xAB
+const defaultMap = "0x14, 0x3C, 0xAB"
+
+func loadKeyMap(dir, filename string) string {
+	basename := strings.TrimSuffix(filename, filepath.Ext(filename))
+	f, err := os.Open(filepath.Join(dir, basename+".map"))
+	if err != nil {
+		log.Println("no map, using default:", err)
+		return defaultMap
+	}
+
+	km, err := ioutil.ReadAll(f)
+	if err != nil {
+		log.Println("no map, using default:", err)
+		return defaultMap
+	}
+	return strings.Trim(string(km), "\n")
+
+}
+
+func getProgram(dir, filename string) *program {
+	ext := filepath.Ext(filename)
+	nicename := strings.TrimSuffix(filename, ext)
+	codename := strings.Replace(filename, ".", "_", -1)
+	size, err := dump(dir, filename, codename)
+	if err != nil {
+		log.Println(err)
+		return nil
+	}
+	kmap := loadKeyMap(dir, filename)
+	return &program{name: nicename, codename: codename, size: size, keymap: kmap, super: ext == ".sch8"}
 }
 
 func dumpAllRoms(dir string) {
@@ -176,18 +211,14 @@ func dumpAllRoms(dir string) {
 	fmt.Println("    const uint16_t size;")
 	fmt.Println("    const bool super;")
 	fmt.Println("};")
-	var ps []program
+	var ps []*program
 	for _, file := range files {
 		ext := filepath.Ext(file.Name())
 		log.Println("ext", ext)
 		if ext == ".ch8" || ext == ".sch8" {
-			nicename := strings.TrimSuffix(file.Name(), ext)
-			codename := strings.Replace(file.Name(), ".", "_", -1)
-			size, err := dump(dir, file.Name(), codename)
-			if err != nil {
-				log.Println(err)
-			} else {
-				ps = append(ps, program{name: nicename, codename: codename, size: size, super: ext == ".sch8"})
+			prog := getProgram(dir, file.Name())
+			if prog != nil {
+				ps = append(ps, prog)
 			}
 		}
 	}
@@ -200,13 +231,20 @@ func dumpAllRoms(dir string) {
 			stringset[p.name] = struct{}{}
 		}
 	}
+
+	fmt.Println("const uint8_t keymaps[][3] PROGMEM = {")
+	for _, p := range ps {
+		fmt.Printf("    {%s},\n", p.keymap)
+	}
+	fmt.Println("};\n")
+
 	fmt.Println("const Program programs[] PROGMEM = {")
 	for _, p := range ps {
 		superField := ""
 		if p.super {
-			superField = ".super=1"
+			superField = ", .super=1"
 		}
-		fmt.Printf("    (Program){ .name=n%s, .code=%s, .size=%d, %s },\n", p.name, p.codename, p.size, superField)
+		fmt.Printf("    (Program){ .name=n%s, .code=%s, .size=%d%s },\n", p.name, p.codename, p.size, superField)
 	}
 	fmt.Println("};")
 }
