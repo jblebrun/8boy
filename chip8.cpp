@@ -509,16 +509,21 @@ void Chip8::groupLoad(uint16_t inst) {
 
 void Chip8::scrollLeft() {
     unsigned long st = millis();
-    for(int col = 0; col < 128; col++) {
-        for(int row = 0; row < 64; row++) {
-            uint8_t color = mBoy.getPixel((col+4)%128, row);
-            mBoy.drawPixel(col, row, color);
+
+    // Screen buffer is laid out in 8 pages,
+    // page 0 is rows 0-7, all columns, imagine a sequence of vertical bytes
+    // similar for page 1-7; 
+    const uint8_t ROW_WIDTH = 128;
+    for(int page = 0; page < 8; page++) {
+        for(int col=0; col < ROW_WIDTH-4; col++) {
+            mBoy.sBuffer[page*ROW_WIDTH + col] = mBoy.sBuffer[page*ROW_WIDTH + col + 4];
+        }
+        for(int col=ROW_WIDTH-4; col < ROW_WIDTH; col++) {
+            mBoy.sBuffer[page*ROW_WIDTH + col] = 0;
         }
     }
-    unsigned long et = millis();
-    Serial.print("SCROLL IN ");
-    Serial.println(et-st);
     mBoy.display();
+    unsigned long et = millis();
 }
 
 void Chip8::scrollRight() {
