@@ -41,40 +41,52 @@ void runEmu() {
     }
 }
 
+void runLoader() {
+    boy.clear();
+    boy.setCursor(0,0);
+    bool super = pgm_read_byte(&programs[pidx].super);
+    boy.print(F("Select:"));
+    boy.setCursor(0,30);
+    boy.print(pidx);
+    boy.print(" ");
+    char buffer[16];
+    strcpy_P(buffer, (const char*)pgm_read_ptr(&programs[pidx].name));
+    boy.print(buffer);
+
+    boy.setCursor(0,50);
+    if(super) {
+        boy.print("SCHIP-8");
+    } else {
+        boy.print("CHIP-8");
+    }
+    boy.display();
+
+    boy.pollButtons();
+    if(boy.justPressed(DOWN_BUTTON)) {
+        pidx++;
+        if(pidx >= PROGRAM_COUNT) {
+            pidx = 0;
+        }
+    }
+    if(boy.justPressed(UP_BUTTON)) {
+        pidx--;
+        if(pidx >= PROGRAM_COUNT) {
+            pidx = PROGRAM_COUNT-1;
+        }
+    }
+    if(boy.justPressed(A_BUTTON)) {
+        program = &programs[pidx];
+        uint16_t size = pgm_read_word(&(program->size));
+        const uint8_t* code = pgm_read_ptr(&(program->code));
+        emu.Load(code, size);
+        emu.Reset();
+
+    }
+}
+
 void loop() {
     if (program == NULL) {
-        boy.clear();
-        boy.setCursor(0,0);
-        boy.print(F("Select:"));
-        boy.setCursor(0,30);
-        boy.print(pidx);
-        boy.print(" ");
-        char buffer[16];
-        strcpy_P(buffer, (const char*)pgm_read_ptr(&programs[pidx].name));
-        boy.print(buffer);
-        boy.display();
-    
-        boy.pollButtons();
-        if(boy.justPressed(DOWN_BUTTON)) {
-            pidx++;
-            if(pidx >= PROGRAM_COUNT) {
-                pidx = 0;
-            }
-        }
-        if(boy.justPressed(UP_BUTTON)) {
-            pidx--;
-            if(pidx >= PROGRAM_COUNT) {
-                pidx = PROGRAM_COUNT-1;
-            }
-        }
-        if(boy.justPressed(A_BUTTON)) {
-            program = &programs[pidx];
-            uint16_t size = pgm_read_word(&(program->size));
-            const uint8_t* code = pgm_read_ptr(&(program->code));
-            emu.Load(code, size);
-            emu.Reset();
-            
-        }
+        runLoader(); 
     } else {
         runEmu();
     }

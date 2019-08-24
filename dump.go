@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 func xy4(op string, inst uint16) string {
@@ -118,10 +119,10 @@ func disasm(inst uint16) string {
 	return ""
 }
 
-func dump(dir, name string) (int, error) {
-	fmt.Printf("const uint8_t %s[] PROGMEM = {\n", name)
+func dump(dir, filename, codename string) (int, error) {
+	fmt.Printf("const uint8_t %s[] PROGMEM = {\n", codename)
 	defer fmt.Println("};\n\n")
-	f, err := os.Open(filepath.Join(dir, name))
+	f, err := os.Open(filepath.Join(dir, filename))
 	if err != nil {
 		return 0, err
 	}
@@ -133,7 +134,7 @@ func dump(dir, name string) (int, error) {
 			if err == io.EOF {
 				break
 			} else if err == io.ErrUnexpectedEOF {
-				log.Println("odd bytes in", name)
+				log.Println("odd bytes in", filename)
 			} else {
 				return 0, err
 			}
@@ -148,8 +149,10 @@ func dump(dir, name string) (int, error) {
 }
 
 type program struct {
-	name string
-	size int
+	name     string
+	codename string
+	size     int
+	super    bool
 }
 
 func dumpAllRoms(dir string) {
@@ -161,24 +164,39 @@ func dumpAllRoms(dir string) {
 	fmt.Println("    const char *name;")
 	fmt.Println("    const uint8_t *code;")
 	fmt.Println("    const uint16_t size;")
+	fmt.Println("    const bool super;")
 	fmt.Println("};")
 	var ps []program
 	for _, file := range files {
-		size, err := dump(dir, file.Name())
-		if err != nil {
-			log.Println(err)
-			continue
+		ext := filepath.Ext(file.Name())
+		log.Println("ext", ext)
+		if ext == ".ch8" || ext == ".sch8" {
+			nicename := strings.TrimSuffix(file.Name(), ext)
+			codename := strings.Replace(file.Name(), ".", "_", -1)
+			size, err := dump(dir, file.Name(), codename)
+			if err != nil {
+				log.Println(err)
+			} else {
+				ps = append(ps, program{name: nicename, codename: codename, size: size, super: ext == ".sch8"})
+			}
 		}
-		ps = append(ps, program{name: file.Name(), size: size})
 	}
 
 	fmt.Printf("const uint8_t PROGRAM_COUNT = %d;\n", len(ps))
+	stringset := make(map[string]struct{})
 	for _, p := range ps {
-		fmt.Printf("const char n%s[] PROGMEM = \"%s\";\n", p.name, p.name)
+		if _, ok := stringset[p.name]; !ok {
+			fmt.Printf("const char n%s[] PROGMEM = \"%s\";\n", p.name, p.name)
+			stringset[p.name] = struct{}{}
+		}
 	}
 	fmt.Println("const Program programs[] PROGMEM = {")
 	for _, p := range ps {
-		fmt.Printf("    (Program){ .name=n%s, .code=%s, .size=%d },\n", p.name, p.name, p.size)
+		superField := ""
+		if p.super {
+			superField = ".super=1"
+		}
+		fmt.Printf("    (Program){ .name=n%s, .code=%s, .size=%d, %s },\n", p.name, p.codename, p.size, superField)
 	}
 	fmt.Println("};")
 }
