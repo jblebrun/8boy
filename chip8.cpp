@@ -224,7 +224,7 @@ void Chip8::groupALU(uint16_t inst) {
             mV[reg(inst)] = mV[reg2(inst)] - mV[reg(inst)];
             break;
         case 0xE: // Vx = Vx SHL 1
-            mV[0xF] = mV[reg(inst)]&0x8 ? 1 : 0;
+            mV[0xF] = mV[reg(inst)]&0x80 ? 1 : 0;
             mV[reg(inst)] <<= 1;
             break;
         default:
