@@ -2,7 +2,6 @@
 #include <Arduino.h>
 
 
-const uint16_t FONT_OFFSET = 0x10 * 5;
 const uint8_t font[] PROGMEM = {
     0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
     0x20, 0x60, 0x20, 0x20, 0x70, // 1
@@ -386,18 +385,22 @@ void Chip8::groupKeyboard(uint16_t inst) {
 }
 
 uint8_t Chip8::readMem(uint16_t addr) {
+
+    if(mHires && addr < sizeof(fonthi)) {
+        return pgm_read_byte(&fonthi[addr]);
+    }
+
+    if(addr < sizeof(font)) {
+        return pgm_read_byte(&font[addr]);
+    }
+
     uint8_t val;
     if(readCell(addr, &val)) {
         writeCell(addr, val);
         return val;
     }
-    if(addr < FONT_OFFSET) {
-        if(mHires) {
-            return pgm_read_byte(&fonthi[addr]);
-        } else {
-            return pgm_read_byte(&font[addr]);
-        }
-    } else if(addr < mProgramSize) {
+
+    if(addr < mProgramSize) {
         return pgm_read_byte(&mProgram[addr-0x200]);
     } else {
         if(addr-mProgramSize > MEM_SIZE) {
