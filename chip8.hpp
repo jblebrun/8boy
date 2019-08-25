@@ -75,6 +75,7 @@ class Chip8 {
     // System group 0x0xxx
     inline void cls();
     inline void ret();
+    inline void scrollDown(uint8_t amt);
     inline void scrollLeft();
     inline void scrollRight();
     inline void exit();

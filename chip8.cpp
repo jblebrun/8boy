@@ -165,18 +165,22 @@ inline void Chip8::exit() {
     mBoy.display();
 }
 
+
 inline void Chip8::groupSys(uint16_t inst) {
-    switch(inst) {
-        case 0x00E0: return cls();
-        case 0x00EE: return ret();
-        case 0xFB: return scrollRight();
-        case 0xFC: return scrollLeft();
-        case 0xFD: return exit();
-        case 0x00FE: return setSuperhires(false);
-        case 0x00FF: return setSuperhires(true);
-        case 0x230: return cls();
-        default:
-            unimpl(inst);
+    switch(inst >> 4) {
+        case 0x00C: return scrollDown(inst&0x000F);
+        default: switch(inst) {
+            case 0x00E0: return cls();
+            case 0x00EE: return ret();
+            case 0x00FB: return scrollRight();
+            case 0x00FC: return scrollLeft();
+            case 0x00FD: return exit();
+            case 0x00FE: return setSuperhires(false);
+            case 0x00FF: return setSuperhires(true);
+            case 0x0230: return cls();
+            default:
+                        unimpl(inst);
+        }
     }
 }
 
@@ -507,6 +511,19 @@ void Chip8::groupLoad(uint16_t inst) {
         default:
             unimpl(inst);
     }
+}
+
+inline void Chip8::scrollDown(uint8_t amt) {
+    uint8_t skip = amt/8;
+    for(int page = 7; page >= 0; page--) {
+       for(int col = 0; col < WIDTH; col++) {
+           mBoy.sBuffer[page*WIDTH+col] <<= amt;
+           uint8_t above = (page > skip) ? mBoy.sBuffer[(page-1-skip)*WIDTH+col] >> (8-amt) : 0;
+           mBoy.sBuffer[page*WIDTH+col] |= above;
+       } 
+      
+    }
+    mBoy.display();
 }
 
 inline void Chip8::scrollLeft() {
