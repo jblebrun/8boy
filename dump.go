@@ -144,7 +144,6 @@ func dump(dir, filename, codename string) (int, error) {
 			if err == io.EOF {
 				break
 			} else if err == io.ErrUnexpectedEOF {
-				log.Println("odd bytes in", filename)
 			} else {
 				return 0, err
 			}
@@ -201,10 +200,12 @@ func getProgram(dir, filename string) *program {
 }
 
 func dumpAllRoms(dir string) {
-	files, err := ioutil.ReadDir(dir)
+	menufile, err := ioutil.ReadFile(filepath.Join(dir, "menu"))
 	if err != nil {
 		log.Fatal(err)
 	}
+	files := strings.Split(string(menufile), "\n")
+
 	fmt.Println("struct Program {")
 	fmt.Println("    const char *name;")
 	fmt.Println("    const uint8_t *code;")
@@ -212,11 +213,10 @@ func dumpAllRoms(dir string) {
 	fmt.Println("    const bool super;")
 	fmt.Println("};")
 	var ps []*program
-	for _, file := range files {
-		ext := filepath.Ext(file.Name())
-		log.Println("ext", ext)
+	for _, filename := range files {
+		ext := filepath.Ext(filename)
 		if ext == ".ch8" || ext == ".sch8" {
-			prog := getProgram(dir, file.Name())
+			prog := getProgram(dir, filename)
 			if prog != nil {
 				ps = append(ps, prog)
 			}

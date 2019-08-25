@@ -86,8 +86,9 @@ void Chip8::Tick() {
 void Chip8::Buttons(uint16_t buttons) {
     mButtons = buttons;
     if (mWaitKey && buttons) {
+        Serial.println("GOT KEY");
         mWaitKey = false;
-        mRunning = false;
+        mRunning = true;
     }
 }
 
