@@ -104,11 +104,6 @@ void Chip8::Step() {
     uint8_t lo = pgm_read_byte(&mProgram[mPC+1-0x200]);
     uint16_t inst = (uint16_t(hi << 8) | lo) ;
 
-    if(inst == lastinst) {
-        mRunning = false;
-        return;
-    }
-
     /*
     Serial.print("INST ");
     Serial.print(mPC, HEX);
@@ -116,9 +111,24 @@ void Chip8::Step() {
     Serial.println(inst, HEX);
     */
     mPC+=2;
-    uint8_t group = uint8_t(inst >> 12); 
-    groupFunc gf = groupFuncs[group];
-    (this->*gf)(inst);
+    switch (inst >> 12) {
+        case 0x0: return groupSys(inst);
+        case 0x1: return groupJump(inst);
+        case 0x2: return groupCall(inst);
+        case 0x3: return groupSeImm(inst);
+        case 0x4: return groupSneImm(inst);
+        case 0x5: return groupSeReg(inst);
+        case 0x6: return groupLdImm(inst);
+        case 0x7: return groupAddImm(inst);
+        case 0x8: return groupALU(inst);
+        case 0x9: return groupSneReg(inst);
+        case 0xA: return groupLdiImm(inst);
+        case 0xB: return groupJpV0Index(inst);
+        case 0xC: return groupRand(inst);
+        case 0xD: return groupGraphics(inst);
+        case 0xE: return groupKeyboard(inst);
+        case 0xF: return groupLoad(inst);
+    }
 }
 
 inline uint8_t reg(uint16_t inst) {

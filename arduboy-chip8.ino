@@ -15,7 +15,7 @@ void setup() {
 
 uint8_t pidx;
 const Program *program;
-const uint8_t keymap[3] = {0x36, 0x78, 0xAB};
+const uint8_t keymap[3] = {0x12, 0x3C, 0xAB};
 
 unsigned long next = 0;
 void runEmu() {
