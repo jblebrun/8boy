@@ -30,12 +30,14 @@ class Chip8 {
     uint16_t mPC = 0x200;
     uint16_t mI = 0;
     uint8_t mV[16];
+    uint8_t mR[8];
     uint16_t mDT;
     uint8_t mSP = 0;
     uint16_t mStack[16];
 
     // Other state
     bool mHires = false;
+    bool mSuperhires = false;
     bool mRunning = false;
     uint16_t mButtons = 0;
     bool mWaitKey;
@@ -76,7 +78,7 @@ class Chip8 {
     inline void scrollLeft();
     inline void scrollRight();
     inline void exit();
-    inline void setHires(bool);
+    inline void setSuperhires(bool);
 
     // ALU group 0x8xxx
     inline void aluLd(uint8_t x, uint8_t y);
@@ -100,6 +102,8 @@ class Chip8 {
     inline void writeBCD(uint8_t);
     inline void strReg(uint8_t);
     inline void ldReg(uint8_t);
+    inline void strR(uint8_t);
+    inline void ldR(uint8_t);
 
 
     public:

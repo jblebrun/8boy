@@ -70,6 +70,7 @@ void Chip8::Reset() {
     mRunning = true;
     mBoy.clear();
     mHires = false;
+    mSuperhires = false;
     beep.noTone();
     for(uint8_t i = 0; i < SLAB_COUNT; i++) {
         mSlabs[i].page = 0;
@@ -98,6 +99,10 @@ void Chip8::Step() {
     uint8_t lo = pgm_read_byte(&mProgram[mPC+1-0x200]);
     uint16_t inst = (uint16_t(hi << 8) | lo) ;
 
+    if(mPC == 0x200 && inst == 0x1260) {
+        mHires = true;
+        inst = 0x12C0;
+    }
     mPC+=2;
     switch (inst >> 12) {
         case 0x0: return groupSys(inst);
@@ -150,8 +155,8 @@ inline void Chip8::halt() {
     mRunning = false;
 }
 
-inline void Chip8::setHires(bool enabled) {
-    mHires = enabled;
+inline void Chip8::setSuperhires(bool enabled) {
+    mSuperhires = enabled;
 }
 
 inline void Chip8::exit() {
@@ -167,8 +172,9 @@ inline void Chip8::groupSys(uint16_t inst) {
         case 0xFB: return scrollRight();
         case 0xFC: return scrollLeft();
         case 0xFD: return exit();
-        case 0x00FE: return setHires(false);
-        case 0x00FF: return setHires(true);
+        case 0x00FE: return setSuperhires(false);
+        case 0x00FF: return setSuperhires(true);
+        case 0x230: return cls();
         default:
             unimpl(inst);
     }
@@ -313,7 +319,7 @@ void Chip8::groupGraphics(uint16_t inst) {
     uint8_t yc = mV[y(inst)];
     uint8_t cols = 8;
     uint16_t mask = 0x80;
-    if(rows == 0 && mHires) {
+    if(rows == 0 && mSuperhires) {
        rows = 16;
        mask = 0x8000;
        cols = 16;
@@ -321,11 +327,12 @@ void Chip8::groupGraphics(uint16_t inst) {
 
     bool collide = false;
 
-    uint8_t scale = mHires ? 1 : 2;
+    uint8_t scalex = mSuperhires ? 1 : 2;
+    uint8_t scaley = mSuperhires | mHires ? 1 : 2;
     mV[0xF] = 0;
     for(int row = 0; row < rows; row++) {
         uint16_t rowData;
-        if(mHires && rows == 16) {
+        if(mSuperhires && rows == 16) {
             rowData = readMem(mI+row*2);
             rowData <<= 8;
             rowData |= readMem(mI+row*2+1);
@@ -334,17 +341,19 @@ void Chip8::groupGraphics(uint16_t inst) {
         }
         for(int col = 0; col < cols; col++) {
             bool on = rowData&mask;
-            uint8_t py = scale*((yc+row)%(64/scale));
-            uint8_t px = scale*((xc+col)%(128*scale));
+            uint8_t py = scaley*((yc+row)%(64/scaley));
+            uint8_t px = scalex*((xc+col)%(128*scalex));
 
             bool wasOn = (mBoy.getPixel(px, py) == WHITE);
             uint8_t newColor = wasOn ^ on ? WHITE : BLACK;
             mV[0xF] |= (wasOn & on) ? 1 : 0;
             mBoy.drawPixel(px,py, newColor);
-            if(!mHires) {
+            if(!mSuperhires) {
                 mBoy.drawPixel(px+1,py, newColor);
-                mBoy.drawPixel(px,py+1, newColor);
-                mBoy.drawPixel(px+1,py+1, newColor);
+                if(!mHires) {
+                    mBoy.drawPixel(px+1,py+1, newColor);
+                    mBoy.drawPixel(px,py+1, newColor);
+                }
             }
             rowData<<=1;
 
@@ -380,7 +389,7 @@ uint8_t Chip8::readMem(uint16_t addr) {
         return slab->data[addr&0xF];
     }
 
-    if(mHires && addr < sizeof(fonthi)) {
+    if(mSuperhires && addr < sizeof(fonthi)) {
         return pgm_read_byte(&fonthi[addr]);
     }
 
@@ -467,6 +476,19 @@ inline void Chip8::ldReg(uint8_t upto) {
     }
 }
 
+inline void Chip8::strR(uint8_t upto) {
+    for(int i = 0; i <= upto; i++) {
+        mR[i] = mV[i];
+    }
+}
+
+inline void Chip8::ldR(uint8_t upto) {
+    for(int i = 0; i <= upto; i++) {
+        mV[i] = mR[i];
+    }
+}
+
+
 
 void Chip8::groupLoad(uint16_t inst) {
     switch(inst&0xFF) {
@@ -480,6 +502,8 @@ void Chip8::groupLoad(uint16_t inst) {
         case 0x33: return writeBCD(x(inst));
         case 0x55: return strReg(x(inst));
         case 0x65: return ldReg(x(inst));
+        case 0x75: return strR(x(inst));
+        case 0x85: return ldR(x(inst));
         default:
             unimpl(inst);
     }
