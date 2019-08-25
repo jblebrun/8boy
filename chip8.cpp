@@ -130,25 +130,12 @@ void Chip8::Step() {
     }
 }
 
-inline uint8_t reg(uint16_t inst) {
-    return (inst>>8)&0x0F;
-}
-
-inline uint8_t reg2(uint16_t inst) {
-    return (inst>>4)&0x0F;
-}
-
-inline uint8_t imm4(uint16_t inst) {
-    return inst&0x0F;
-}
-
-inline uint8_t imm8(uint16_t inst) {
-    return inst;
-}
-
-inline uint16_t imm12(uint16_t inst) {
-    return inst&0xFFF;
-}
+// inst read helpers
+inline uint8_t x(uint16_t inst) { return (inst>>8)&0x0F; }
+inline uint8_t y(uint16_t inst) { return (inst>>4)&0x0F; }
+inline uint8_t imm4(uint16_t inst) { return inst&0x0F; }
+inline uint8_t imm8(uint16_t inst) { return inst; }
+inline uint16_t imm12(uint16_t inst) { return inst&0xFFF; }
 
 void Chip8::groupSys(uint16_t inst) {
     switch(inst) {
@@ -216,33 +203,33 @@ void Chip8::groupCall(uint16_t inst) {
 
 // 0x3000 skip if equal immediate
 void Chip8::groupSeImm(uint16_t inst) {
-    if(mV[reg(inst)] == imm8(inst)) {
+    if(mV[x(inst)] == imm8(inst)) {
         mPC+=2;
     }
 }
 
 // 0x4xxxx skip if not equal immediate
 void Chip8::groupSneImm(uint16_t inst) {
-    if(mV[reg(inst)] != imm8(inst)) {
+    if(mV[x(inst)] != imm8(inst)) {
         mPC+=2;
     }
 }
 
 // 0x5xxx skip if two registers hold equal values
 void Chip8::groupSeReg(uint16_t inst) {
-    if(mV[reg(inst)] == mV[reg2(inst)]) {
+    if(mV[x(inst)] == mV[y(inst)]) {
         mPC+=2;
     }
 }
 
 //0x6xxx
 void Chip8::groupLdImm(uint16_t inst) {
-    mV[reg(inst)] = (uint8_t)inst;
+    mV[x(inst)] = (uint8_t)inst;
 }
 
 //0x7xxx add immediate
 void Chip8::groupAddImm(uint16_t inst) {
-    mV[reg(inst)] += imm8(inst);
+    mV[x(inst)] += imm8(inst);
 }
 
 void Chip8::unimpl(uint16_t inst) {
@@ -256,46 +243,46 @@ void Chip8::groupALU(uint16_t inst) {
     uint16_t result_carry;
     switch (inst&0xF) {
         case 0x0: // LD Vx, Vy
-            mV[reg(inst)] = mV[reg2(inst)];
+            mV[x(inst)] = mV[y(inst)];
             break;
         case 0x1: // Vx = Vx | Vy
-            mV[reg(inst)] = mV[reg(inst)] | mV[reg2(inst)];
+            mV[x(inst)] = mV[x(inst)] | mV[y(inst)];
             break;
         case 0x2: // Vx = Vx & Vy
-            mV[reg(inst)] = mV[reg(inst)] & mV[reg2(inst)];
+            mV[x(inst)] = mV[x(inst)] & mV[y(inst)];
             break;
         case 0x3: // Vx = Vx ^ Vy
-            mV[reg(inst)] = mV[reg(inst)] ^ mV[reg2(inst)];
+            mV[x(inst)] = mV[x(inst)] ^ mV[y(inst)];
             break;
         case 0x4: // Vx = Vx + Vy
-            result_carry = mV[reg(inst)] + mV[reg2(inst)];
+            result_carry = mV[x(inst)] + mV[y(inst)];
             mV[0xF] = result_carry > 0x00FF ? 1 : 0;
-            mV[reg(inst)] = result_carry;
+            mV[x(inst)] = result_carry;
             break;
         case 0x5: // Vx = Vx - Vy
-            mV[0xF] = mV[reg(inst)] > mV[reg2(inst)]; 
-            mV[reg(inst)] = mV[reg(inst)] - mV[reg2(inst)];
+            mV[0xF] = mV[x(inst)] > mV[y(inst)]; 
+            mV[x(inst)] = mV[x(inst)] - mV[y(inst)];
             break;
         case 0x6: // Vx = Vx SHR 1
-            mV[0xF] = mV[reg(inst)]&0x1 ? 1 : 0;
-            mV[reg(inst)] >>= 1;
+            mV[0xF] = mV[x(inst)]&0x1 ? 1 : 0;
+            mV[x(inst)] >>= 1;
             break;
         case 0x7: // Vx = Vy - Vx
-            mV[0xF] = mV[reg2(inst)] > mV[reg(inst)]; 
-            mV[reg(inst)] = mV[reg2(inst)] - mV[reg(inst)];
+            mV[0xF] = mV[y(inst)] > mV[x(inst)]; 
+            mV[x(inst)] = mV[y(inst)] - mV[x(inst)];
             break;
         case 0xE: // Vx = Vx SHL 1
-            mV[0xF] = mV[reg(inst)]&0x80 ? 1 : 0;
-            mV[reg(inst)] <<= 1;
+            mV[0xF] = mV[x(inst)]&0x80 ? 1 : 0;
+            mV[x(inst)] <<= 1;
             break;
         default:
             unimpl(inst);
     }
 }
 
-// 0x9xxx - Skip if two registers hold inequal values
+// 0x9xxx - Skip if two xisters hold inequal values
 void Chip8::groupSneReg(uint16_t inst) {
-    if(mV[reg(inst)] != mV[reg2(inst)]) {
+    if(mV[x(inst)] != mV[y(inst)]) {
         mPC+=2;
     }
 }
@@ -313,14 +300,14 @@ void Chip8::groupJpV0Index(uint16_t inst) {
 
 //0xCxxx random
 void Chip8::groupRand(uint16_t inst) {
-    mV[reg(inst)] = random(1+imm8(inst));
+    mV[x(inst)] = random(1+imm8(inst));
 }
 
 //0xDxxx - draw
 void Chip8::groupGraphics(uint16_t inst) {
     uint8_t rows = imm4(inst);
-    uint8_t x = mV[reg(inst)];
-    uint8_t y = mV[reg2(inst)];
+    uint8_t xc = mV[x(inst)];
+    uint8_t yc = mV[y(inst)];
     uint8_t cols = 8;
     uint16_t mask = 0x80;
     if(rows == 0 && mHires) {
@@ -344,8 +331,8 @@ void Chip8::groupGraphics(uint16_t inst) {
         }
         for(int col = 0; col < cols; col++) {
             bool on = rowData&mask;
-            uint8_t py = scale*((y+row)%(64/scale));
-            uint8_t px = scale*((x+col)%(128*scale));
+            uint8_t py = scale*((yc+row)%(64/scale));
+            uint8_t px = scale*((xc+col)%(128*scale));
 
             bool wasOn = (mBoy.getPixel(px, py) == WHITE);
             uint8_t newColor = wasOn ^ on ? WHITE : BLACK;
@@ -366,7 +353,7 @@ void Chip8::groupGraphics(uint16_t inst) {
 
 // 0xExxx XXX -keyboard to keys
 void Chip8::groupKeyboard(uint16_t inst) {
-    uint8_t key = mV[reg(inst)];
+    uint8_t key = mV[x(inst)];
     uint16_t mask = 0x01 << key;
     switch(imm8(inst)) {
         case 0x9E:
@@ -453,7 +440,7 @@ void Chip8::writeMem(uint16_t addr, uint8_t val) {
 }
 
 void Chip8::groupLoad(uint16_t inst) {
-    uint8_t to = reg(inst);
+    uint8_t to = x(inst);
     switch(inst&0xFF) {
         case 0x07:
             mV[to] = mDT;
