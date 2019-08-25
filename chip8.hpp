@@ -36,7 +36,6 @@ class Chip8 {
     bool mWaitKey;
     
     void run();
-    inline void halt();
     inline void unimpl(uint16_t);
 
 
@@ -73,6 +72,13 @@ class Chip8 {
     inline void groupKeyboard(uint16_t);
     inline void groupLoad(uint16_t);
 
+    // System group 0x0xxx
+    inline void cls();
+    inline void ret();
+    inline void scrollLeft();
+    inline void scrollRight();
+    inline void halt();
+    inline void setHires(bool);
 
     // ALU group 0x8xxx
     inline void aluLd(uint8_t x, uint8_t y);
@@ -84,9 +90,6 @@ class Chip8 {
     inline void aluSubn(uint8_t x, uint8_t y);
     inline void aluShl(uint8_t x);
     inline void aluShr(uint8_t x);
-
-    void scrollLeft();
-    void scrollRight();
 
     public:
        Chip8(Arduboy2 &boy);

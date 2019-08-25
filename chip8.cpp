@@ -90,7 +90,7 @@ void Chip8::Buttons(uint16_t buttons) {
     mButtons = buttons;
     if (mWaitKey && buttons) {
         mWaitKey = false;
-        mRunning = false;
+        halt();
     }
 }
 
@@ -128,44 +128,39 @@ inline uint8_t imm4(uint16_t inst) { return inst&0x0F; }
 inline uint8_t imm8(uint16_t inst) { return inst; }
 inline uint16_t imm12(uint16_t inst) { return inst&0xFFF; }
 
-void Chip8::groupSys(uint16_t inst) {
-    switch(inst) {
-        // CLS
-        case 0x00E0:
-            mBoy.clear();
-            break;
-        // RET
-        case 0x00EE:
-            // What does original interpreter do?
-            if(mSP == 0) {
-                Serial.print("STACK UNDERFLOW -- ");
-                Serial.println(mPC, HEX);
-                mRunning = false;
-                return;
-            }
-            mSP--;
-            //Serial.print(mPC, HEX);
-            //Serial.print(" RET ");
-            mPC = mStack[mSP];
-            //Serial.println(mPC, HEX);
 
-            break;
-        case 0xFB:
-            scrollRight();
-            break;
-        case 0xFC:
-            scrollLeft();
-            break; 
-        case 0xFD:
-            mRunning = false;
-            break;
-        case 0x00FE:
-            mHires = false;
-            break;
-        case 0x00FF:
-            mHires = true;
-            break;
-            
+inline void Chip8::cls() {
+    mBoy.clear();
+}
+
+inline void Chip8::ret() {
+    if(mSP == 0) {
+        Serial.print(F("STACK UNDERFLOW -- "));
+        Serial.println(mPC, HEX);
+        halt();
+        return;
+    }
+    mSP--;
+    mPC = mStack[mSP];
+}
+
+inline void Chip8::halt() {
+    mRunning = false;
+}
+
+inline void Chip8::setHires(bool enabled) {
+    mHires = enabled;
+}
+
+inline void Chip8::groupSys(uint16_t inst) {
+    switch(inst) {
+        case 0x00E0: return cls();
+        case 0x00EE: return ret();
+        case 0xFB: return scrollRight();
+        case 0xFC: return scrollLeft();
+        case 0xFD: return halt();
+        case 0x00FE: return setHires(false);
+        case 0x00FF: return setHires(true);
         default:
             unimpl(inst);
     }
