@@ -3,7 +3,7 @@
 
 
 #define SLAB_SIZE 16
-#define SLAB_COUNT 32
+#define SLAB_COUNT 40
 
 struct Slab {
     uint8_t page;

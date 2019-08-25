@@ -420,6 +420,8 @@ void Chip8::writeMem(uint16_t addr, uint8_t val) {
     if(slab->page == 0) {
         slab->page = addr >> 4;
         uint16_t pageStart = addr & 0xFF0;
+        Serial.print(F("ALLOC SLAB "));
+        Serial.println(pageStart, HEX);
         for(uint8_t i = 0; i < 16; i++) {
             if(pageStart + i < mProgramSize) {
                 slab->data[i] = pgm_read_byte(&mProgram[(pageStart|i)-0x200]);
