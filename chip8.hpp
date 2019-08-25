@@ -2,14 +2,22 @@
 #include <Arduboy2.h>
 
 
+#define MEM_SIZE 512
+#define MAX_CELLS 48
+
 class Chip8;
 
 typedef void(Chip8::*groupFunc)(uint16_t);
 
 class Chip8 {
+
+    // Rendering
+    Arduboy2 &mBoy;
+    BeepPin1 beep;
+
+    // Program info
     const uint8_t *mProgram;
     uint16_t mProgramSize;
-    void run();
     
     // registers
     // PC starts to 200 conventionally
@@ -17,39 +25,37 @@ class Chip8 {
     uint16_t mPC = 0x200;
     uint16_t mI = 0;
     uint8_t mV[16];
-    uint16_t mStack[16];
-    uint8_t mSP = 0;
     uint16_t mDT;
+    uint8_t mSP = 0;
+    uint16_t mStack[16];
 
+    // Other state
+    bool mHires = false;
+    bool mRunning = false;
+    uint16_t mButtons = 0;
+    bool mWaitKey;
+    
+    void run();
+    inline void halt();
+    inline void unimpl(uint16_t);
+
+
+    // Memory
+    uint8_t mM[MEM_SIZE];
     uint8_t readMem(uint16_t);
     void writeMem(uint16_t, uint8_t);
 
-    inline void unimpl(uint16_t);
-
-    uint16_t mButtons = 0;
-
-    bool mWaitKey;
-
-    bool mHires = false;
-
-    uint16_t mWrites = 0;
-
-    bool mRunning = false;
-
-#define MEM_SIZE 512
-    uint8_t mM[MEM_SIZE];
-
-#define MAX_CELLS 48
+    // Cell memory
+    // For writes inside of the program space
     uint8_t mCellIndex = 0;
     uint16_t mCellAddrs[MAX_CELLS];
     uint8_t mCellValues[MAX_CELLS];
-
     bool readCell(uint16_t, uint8_t*);
     void writeCell(uint16_t, uint8_t);
 
-    Arduboy2 &mBoy;
-    BeepPin1 beep;
     
+    // instruction handlers
+    // Instruction groups
     inline void groupSys(uint16_t);
     inline void groupJump(uint16_t);
     inline void groupCall(uint16_t);

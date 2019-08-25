@@ -60,14 +60,11 @@ Chip8::Chip8(Arduboy2 &boy) : mBoy(boy) {
 }
 
 void Chip8::Load(const uint8_t *program, const uint16_t size) {
-    Serial.println("START PROGRAM");
     mProgram = program;
     mProgramSize = size;
 }
 
 void Chip8::Reset() {
-    Serial.println("Reset");
-    mWrites = 0;
     mPC = 0x200;
     mSP = 0;
     mRunning = true;
@@ -93,7 +90,7 @@ void Chip8::Buttons(uint16_t buttons) {
     mButtons = buttons;
     if (mWaitKey && buttons) {
         mWaitKey = false;
-        mRunning = true;
+        mRunning = false;
     }
 }
 
@@ -103,12 +100,6 @@ void Chip8::Step() {
     uint8_t lo = pgm_read_byte(&mProgram[mPC+1-0x200]);
     uint16_t inst = (uint16_t(hi << 8) | lo) ;
 
-    /*
-    Serial.print("INST ");
-    Serial.print(mPC, HEX);
-    Serial.print(" - ");
-    Serial.println(inst, HEX);
-    */
     mPC+=2;
     switch (inst >> 12) {
         case 0x0: return groupSys(inst);
@@ -503,26 +494,22 @@ void Chip8::groupLoad(uint16_t inst) {
     }
 }
 
-void Chip8::scrollLeft() {
-    unsigned long st = millis();
-
+inline void Chip8::scrollLeft() {
     // Screen buffer is laid out in 8 pages,
     // page 0 is rows 0-7, all columns, imagine a sequence of vertical bytes
     // similar for page 1-7; 
-    const uint8_t ROW_WIDTH = 128;
     for(int page = 0; page < 8; page++) {
-        for(int col=0; col < ROW_WIDTH-4; col++) {
-            mBoy.sBuffer[page*ROW_WIDTH + col] = mBoy.sBuffer[page*ROW_WIDTH + col + 4];
+        for(int col=0; col < WIDTH-4; col++) {
+            mBoy.sBuffer[page*WIDTH + col] = mBoy.sBuffer[page*WIDTH + col + 4];
         }
-        for(int col=ROW_WIDTH-4; col < ROW_WIDTH; col++) {
-            mBoy.sBuffer[page*ROW_WIDTH + col] = 0;
+        for(int col=WIDTH-4; col < WIDTH; col++) {
+            mBoy.sBuffer[page*WIDTH + col] = 0;
         }
     }
     mBoy.display();
-    unsigned long et = millis();
 }
 
-void Chip8::scrollRight() {
+inline void Chip8::scrollRight() {
     unimpl(mPC);
 }
 
