@@ -42,8 +42,11 @@ void runEmu() {
     if(boy.pressed(B_BUTTON)) buttons |= (1 << (keymap[2] & 0xF));
 
     emu.Buttons(buttons);
+    boy.pollButtons();
     if(emu.Running()) {
         emu.Step();
+    } else if(boy.justPressed(A_BUTTON)) {
+        emu.Reset();
     }
 }
 

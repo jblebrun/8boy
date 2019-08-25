@@ -41,6 +41,7 @@ class Chip8 {
     bool mWaitKey;
     
     void run();
+    inline void halt();
     inline void unimpl(uint16_t);
 
     // Memory
@@ -74,7 +75,7 @@ class Chip8 {
     inline void ret();
     inline void scrollLeft();
     inline void scrollRight();
-    inline void halt();
+    inline void exit();
     inline void setHires(bool);
 
     // ALU group 0x8xxx
@@ -107,7 +108,7 @@ class Chip8 {
        void Reset();
        void Step();
        void Buttons(uint16_t buttons);
-       bool Running();
-       void Toggle();
+       bool Running() { return mRunning; }
+       void Toggle() { mRunning = !mRunning; };
 
 };

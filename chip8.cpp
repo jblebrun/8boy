@@ -75,14 +75,6 @@ void Chip8::Reset() {
     }
 }
 
-bool Chip8::Running() {
-    return mRunning;
-}
-
-void Chip8::Toggle() {
-    mRunning = !mRunning;
-}
-
 void Chip8::Buttons(uint16_t buttons) {
     beep.timer();
     if(mDT > 0) {
@@ -137,8 +129,8 @@ inline void Chip8::cls() {
 
 inline void Chip8::ret() {
     if(mSP == 0) {
-        Serial.print(F("STACK UNDERFLOW -- "));
-        Serial.println(mPC, HEX);
+        mBoy.setCursor(0,0);
+        mBoy.print(F("ST UNDER"));
         halt();
         return;
     }
@@ -147,13 +139,21 @@ inline void Chip8::ret() {
 }
 
 inline void Chip8::halt() {
-    Serial.print(mPC, HEX);
-    Serial.println(" HALT");
+    mBoy.setCursor(0,16);
+    mBoy.print(F("HALT @ "));
+    mBoy.println(mPC-2, HEX);
+    mBoy.display();
     mRunning = false;
 }
 
 inline void Chip8::setHires(bool enabled) {
     mHires = enabled;
+}
+
+inline void Chip8::exit() {
+    mRunning = false;
+    mBoy.print("PRESS B TO RESET");
+    mBoy.display();
 }
 
 inline void Chip8::groupSys(uint16_t inst) {
@@ -162,7 +162,7 @@ inline void Chip8::groupSys(uint16_t inst) {
         case 0x00EE: return ret();
         case 0xFB: return scrollRight();
         case 0xFC: return scrollLeft();
-        case 0xFD: return halt();
+        case 0xFD: return exit();
         case 0x00FE: return setHires(false);
         case 0x00FF: return setHires(true);
         default:
@@ -179,9 +179,9 @@ inline void Chip8::groupJump(uint16_t inst) {
 inline void Chip8::groupCall(uint16_t inst) {
     // What does original interpreter do?
     if(mSP >= 16) {
-        Serial.print(F("STACK OVERFLOW -- "));
-        Serial.println(mPC, HEX);
-        mRunning = false;
+        mBoy.setCursor(0,0);
+        mBoy.print(F("ST OVER "));
+        halt();
         return;
     }
     mStack[mSP++] = mPC;
@@ -221,8 +221,10 @@ inline void Chip8::groupAddImm(uint16_t inst) {
 }
 
 inline void Chip8::unimpl(uint16_t inst) {
-    Serial.println(inst, HEX);
-    mRunning = false;
+    mBoy.setCursor(0, 0);
+    mBoy.print(F("UNIMPL - "));
+    mBoy.print(inst, HEX);
+    halt();
 }
 
 //0x8xx0 - ALU
@@ -389,7 +391,7 @@ uint8_t Chip8::readMem(uint16_t addr) {
     mBoy.setCursor(0, 0);
     mBoy.print(F("bad read at "));
     mBoy.print(addr, HEX);
-    mRunning = false;
+    halt();
     return 0;
 }
 
@@ -412,6 +414,7 @@ void Chip8::writeMem(uint16_t addr, uint8_t val) {
         mBoy.setCursor(0, 0);
         mBoy.print(F("OOM AT "));
         mBoy.print(addr, HEX);
+        halt();
         return;
     }
     if(slab->page == 0) {
