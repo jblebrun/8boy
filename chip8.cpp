@@ -303,7 +303,7 @@ void Chip8::groupJpV0Index(uint16_t inst) {
 
 //0xCxxx random
 void Chip8::groupRand(uint16_t inst) {
-    mV[x(inst)] = random(1+imm8(inst));
+    mV[x(inst)] = random(0xFF) & imm8(inst);
 }
 
 //0xDxxx - draw
