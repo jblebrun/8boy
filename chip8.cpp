@@ -90,7 +90,7 @@ void Chip8::Buttons(uint16_t buttons) {
     mButtons = buttons;
     if (mWaitKey && buttons) {
         mWaitKey = false;
-        halt();
+        mRunning = false;
     }
 }
 
@@ -100,6 +100,17 @@ void Chip8::Step() {
     uint8_t lo = pgm_read_byte(&mProgram[mPC+1-0x200]);
     uint16_t inst = (uint16_t(hi << 8) | lo) ;
 
+    /*
+    Serial.print(mPC, HEX);
+    Serial.print(":");
+    Serial.print(inst, HEX);
+    Serial.print(" [");
+    for(int i = 0; i < 16; i++) {
+        Serial.print(mV[i], HEX);
+        Serial.print(" ");
+    }
+    Serial.println("]");
+    */
     mPC+=2;
     switch (inst >> 12) {
         case 0x0: return groupSys(inst);
@@ -145,6 +156,8 @@ inline void Chip8::ret() {
 }
 
 inline void Chip8::halt() {
+    Serial.print(mPC, HEX);
+    Serial.println(" HALT");
     mRunning = false;
 }
 
@@ -213,6 +226,7 @@ inline void Chip8::groupLdImm(uint16_t inst) {
 //0x7xxx add immediate
 inline void Chip8::groupAddImm(uint16_t inst) {
     mV[x(inst)] += imm8(inst);
+    // no carry?
 }
 
 inline void Chip8::unimpl(uint16_t inst) {
@@ -244,14 +258,14 @@ inline void Chip8::aluSubn(uint8_t x, uint8_t y) {
     mV[x] = mV[y] - mV[x];
 }
 
-inline void Chip8::aluShr(uint8_t x) { 
-    mV[0xF] = mV[x]&0x1 ? 1 : 0;
-    mV[x] >>= 1;
+inline void Chip8::aluShr(uint8_t x, uint8_t y) { 
+    mV[0xF] = mV[x]&0x01 ? 1 : 0;
+    mV[x] = mV[x] >> 1;
 }
 
-inline void Chip8::aluShl(uint8_t x) { 
+inline void Chip8::aluShl(uint8_t x, uint8_t y) { 
     mV[0xF] = mV[x]&0x80 ? 1 : 0;
-    mV[x] <<= 1;
+    mV[x] = mV[x] << 1;
 }
 
 
@@ -264,15 +278,15 @@ void Chip8::groupALU(uint16_t inst) {
         case 0x3: return aluXor(x(inst), y(inst));
         case 0x4: return aluAdd(x(inst), y(inst));
         case 0x5: return aluSub(x(inst), y(inst));
-        case 0x6: return aluShr(x(inst));
+        case 0x6: return aluShr(x(inst), y(inst));
         case 0x7: return aluSubn(x(inst), y(inst));
-        case 0xE: return aluShl(x(inst));
+        case 0xE: return aluShl(x(inst), y(inst));
         default:
             unimpl(inst);
     }
 }
 
-// 0x9xxx - Skip if two xisters hold inequal values
+// 0x9xxx - Skip if two registers hold inequal values
 void Chip8::groupSneReg(uint16_t inst) {
     if(mV[x(inst)] != mV[y(inst)]) {
         mPC+=2;
@@ -335,7 +349,6 @@ void Chip8::groupGraphics(uint16_t inst) {
                 mBoy.drawPixel(px,py+1, newColor);
                 mBoy.drawPixel(px+1,py+1, newColor);
             }
-            // 
             rowData<<=1;
 
         }
@@ -364,7 +377,6 @@ void Chip8::groupKeyboard(uint16_t inst) {
 }
 
 uint8_t Chip8::readMem(uint16_t addr) {
-
     if(mHires && addr < sizeof(fonthi)) {
         return pgm_read_byte(&fonthi[addr]);
     }
@@ -383,39 +395,50 @@ uint8_t Chip8::readMem(uint16_t addr) {
         return pgm_read_byte(&mProgram[addr-0x200]);
     } else {
         if(addr-mProgramSize > MEM_SIZE) {
-            Serial.print("OVER READ ");
-            Serial.print(addr, HEX);
+            Serial.print(F("OVER READ "));
+            Serial.println(addr, HEX);
             mRunning = false;
         }
         return mM[addr-mProgramSize];
     }
 }
 
-bool Chip8::readCell(uint16_t addr, uint8_t *val) {
-    for(int i = 0; i < mCellIndex; i++) {
-        if(mCellAddrs[i] == addr) {
-            *val = mCellValues[i];
-            return true;
+
+uint8_t* Chip8::findCell(uint16_t addr) {
+    for(int i = 1; i <= mCellIndex; i++) {
+        uint16_t offset = MEM_SIZE - i*3;
+        if(*((uint16_t*)(mM+offset)) == addr) {
+            return &mM[offset+2];
         }
     }
-    return false;
+    return NULL;
+}
+
+bool Chip8::readCell(uint16_t addr, uint8_t *val) {
+    uint8_t *cell = findCell(addr);
+    if(cell) {
+        *val = *cell;
+    }
+    return cell;
 }
 
 void Chip8::writeCell(uint16_t addr, uint8_t val) {
-    for(int i = 0; i < mCellIndex; i++) {
-        if(mCellAddrs[i] == addr) {
-            mCellValues[i] = val;
-            return; 
-        }
+    uint8_t *cell = findCell(addr);
+    if(cell) {
+        *cell = val;
+        return;
     }
-    if(mCellIndex >= MAX_CELLS) {
+    if(mCellIndex * 3 >= MEM_SIZE) {
         Serial.println(F("NO MORE CELLS"));
         return;
     }
-    Serial.print("ADD CELL ");
+    Serial.print(F("ADD CELL "));
     Serial.println(addr, HEX);
-    mCellAddrs[mCellIndex] = addr;
-    mCellValues[mCellIndex++] = val;
+    mCellIndex++;
+    uint16_t offset = MEM_SIZE - mCellIndex*3;
+    *((uint16_t*)(mM+offset)) = addr;
+    mM[offset+2] = val;
+
 }
 
 void Chip8::writeMem(uint16_t addr, uint8_t val) {
@@ -423,7 +446,7 @@ void Chip8::writeMem(uint16_t addr, uint8_t val) {
         writeCell(addr, val);
     } else {
         if(addr-mProgramSize > MEM_SIZE) {
-            Serial.print("OVERWRITE ");
+            Serial.print(F("OVERWRITE "));
             Serial.println(addr, HEX);
             mRunning = false;
         }

@@ -23,7 +23,7 @@ void runEmu() {
     if(t < next) {
         return;
     }
-    next = t + 500;
+    next = t + 200;
     if(boy.pressed(UP_BUTTON) &&
             boy.pressed(DOWN_BUTTON) && 
             boy.pressed(LEFT_BUTTON) && 
@@ -51,19 +51,19 @@ void runLoader() {
     boy.clear();
     boy.setCursor(0,0);
     bool super = pgm_read_byte(&programs[pidx].super);
-    boy.print(F("Select:"));
+    boy.print(F("Select: "));
     boy.setCursor(0,30);
     boy.print(pidx);
-    boy.print(" ");
+    boy.setCursor(16,30);
     char buffer[16];
     strcpy_P(buffer, (const char*)pgm_read_ptr(&programs[pidx].name));
     boy.print(buffer);
 
     boy.setCursor(0,50);
     if(super) {
-        boy.print("SCHIP-8");
+        boy.print(F("SCHIP-8"));
     } else {
-        boy.print("CHIP-8");
+        boy.print(F("CHIP-8"));
     }
     boy.display();
 

@@ -2,8 +2,7 @@
 #include <Arduboy2.h>
 
 
-#define MEM_SIZE 512
-#define MAX_CELLS 48
+#define MEM_SIZE 1024
 
 class Chip8;
 
@@ -47,10 +46,9 @@ class Chip8 {
     // Cell memory
     // For writes inside of the program space
     uint8_t mCellIndex = 0;
-    uint16_t mCellAddrs[MAX_CELLS];
-    uint8_t mCellValues[MAX_CELLS];
     bool readCell(uint16_t, uint8_t*);
     void writeCell(uint16_t, uint8_t);
+    uint8_t* findCell(uint16_t);
 
     
     // instruction handlers
@@ -88,8 +86,8 @@ class Chip8 {
     inline void aluAdd(uint8_t x, uint8_t y);
     inline void aluSub(uint8_t x, uint8_t y);
     inline void aluSubn(uint8_t x, uint8_t y);
-    inline void aluShl(uint8_t x);
-    inline void aluShr(uint8_t x);
+    inline void aluShl(uint8_t x, uint8_t y);
+    inline void aluShr(uint8_t x, uint8_t y);
 
     // Load group 0xFxxx
     inline void readDT(uint8_t);

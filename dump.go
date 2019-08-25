@@ -39,6 +39,16 @@ func disasm(inst uint16) string {
 			return "CLS"
 		case 0xEE:
 			return "RET"
+		case 0xFB:
+			return "SCR"
+		case 0xFC:
+			return "SCL"
+		case 0xFD:
+			return "HALT"
+		case 0xFE:
+			return "LO"
+		case 0xFF:
+			return "HI"
 		}
 	case 1:
 		return imm12("JP", inst)
