@@ -427,63 +427,47 @@ void Chip8::writeMem(uint16_t addr, uint8_t val) {
     }
 }
 
+inline void Chip8::readDT(uint8_t into) { mV[into] = mDT; }
+inline void Chip8::waitK(uint8_t into) {
+    mRunning = false;
+    mWaitKey = true;
+}
+inline void Chip8::setDT(uint8_t from) { mDT = mV[from]; }
+inline void Chip8::makeBeep(uint16_t dur) { beep.tone(beep.freq(880), dur); }
+inline void Chip8::addI(uint8_t from) { mI += mV[from]; }
+inline void Chip8::ldiFont(uint8_t from) { mI = 5 * mV[from]; }
+inline void Chip8::ldiHiFont(uint8_t from) { mI = 10 * mV[from]; }
+inline void Chip8::writeBCD(uint8_t from) {
+    uint8_t val = mV[from];
+    writeMem(mI, val/100);
+    writeMem(mI+1, (val/10)%10);
+    writeMem(mI+2, val%10);
+}
+inline void Chip8::strReg(uint8_t upto) {
+    for(int i = 0; i <= upto; i++) {
+        writeMem(mI+i, mV[i]);
+    }
+}
+
+inline void Chip8::ldReg(uint8_t upto) {
+    for(int i = 0; i <= upto; i++) {
+        mV[i] = readMem(mI+i);
+    }
+}
+
+
 void Chip8::groupLoad(uint16_t inst) {
-    uint8_t to = x(inst);
     switch(inst&0xFF) {
-        case 0x07:
-            mV[to] = mDT;
-            break;
-        case 0xA:
-            mRunning = false;
-            mWaitKey = true;
-            break;
-        case 0x15:
-            mDT = mV[to];
-            break;
-        case 0x18:
-            beep.tone(beep.freq(880), imm8(inst));
-            break;
-
-        case 0x1E:
-            mI = mI + mV[to];
-            break;
-
-        case 0x29:
-            mI = 5 * mV[to];
-            break;
-        case 0x30:
-            mI = 10 * mV[to];
-            break;
-
-        case 0x33: {
-            uint8_t val = mV[to];
-            writeMem(mI, val/100);
-            writeMem(mI+1, (val/10)%10);
-            writeMem(mI+2, val%10);
-            break;
-        }
-
-        // Store registers to memory
-        case 0x55:
-            for(int i = 0; i <= to; i++) {
-                /*
-                Serial.print("MEMORY WRITE ");
-                Serial.print(mWrites++);
-                Serial.print(" ");
-                Serial.print(mI+i, HEX);
-                Serial.print(" = ");
-                Serial.println(mV[i], HEX);
-                */
-                writeMem(mI+i, mV[i]);
-            }
-            break;
-        // Read registers from memory
-        case 0x65:
-            for(int i = 0; i <= to; i++) {
-                mV[i] = readMem(mI+i);
-            }
-            break;
-
+        case 0x07: return readDT(x(inst));
+        case 0xA: return waitK(x(inst));
+        case 0x15: return setDT(x(inst));
+        case 0x18: return makeBeep(imm8(inst));
+        case 0x1E: return addI(x(inst));
+        case 0x29: return ldiFont(x(inst));
+        case 0x30: return ldiHiFont(x(inst));
+        case 0x33: return writeBCD(x(inst));
+        case 0x55: return strReg(x(inst));
+        case 0x65: return ldReg(x(inst));
         default:
             unimpl(inst);
     }

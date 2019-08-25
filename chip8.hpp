@@ -91,6 +91,19 @@ class Chip8 {
     inline void aluShl(uint8_t x);
     inline void aluShr(uint8_t x);
 
+    // Load group 0xFxxx
+    inline void readDT(uint8_t);
+    inline void waitK(uint8_t);
+    inline void setDT(uint8_t);
+    inline void makeBeep(uint16_t);
+    inline void addI(uint8_t);
+    inline void ldiFont(uint8_t);
+    inline void ldiHiFont(uint8_t);
+    inline void writeBCD(uint8_t);
+    inline void strReg(uint8_t);
+    inline void ldReg(uint8_t);
+
+
     public:
        Chip8(Arduboy2 &boy);
        void Load(const uint8_t program[], uint16_t size);
