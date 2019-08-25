@@ -231,12 +231,16 @@ inline void Chip8::aluAdd(uint8_t x, uint8_t y) {
     mV[0xF] = result_carry > 0x00FF ? 1 : 0;
 }
 inline void Chip8::aluSub(uint8_t x, uint8_t y) { 
-    mV[0xF] = mV[x] > mV[y]; 
+    // NOTE: many references are wrong!
+    // Consult *original* Cosmac VIP manual
+    mV[0xF] = mV[x] >= mV[y]; 
     mV[x] = mV[x] - mV[y];
 }
 
 inline void Chip8::aluSubn(uint8_t x, uint8_t y) { 
-    mV[0xF] = mV[y] > mV[x]; 
+    // NOTE: many references are wrong!
+    // Consult *original* Cosmac VIP manual
+    mV[0xF] = mV[y] >= mV[x]; 
     mV[x] = mV[y] - mV[x];
 }
 
