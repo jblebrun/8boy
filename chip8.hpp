@@ -21,6 +21,15 @@ class Chip8 {
     uint8_t mSP = 0;
     uint16_t mDT;
 
+    uint8_t readMem(uint16_t);
+    void writeMem(uint16_t, uint8_t);
+
+    inline void unimpl(uint16_t);
+
+    uint16_t mButtons = 0;
+
+    bool mWaitKey;
+
     bool mHires = false;
 
     uint16_t mWrites = 0;
@@ -58,14 +67,17 @@ class Chip8 {
     inline void groupKeyboard(uint16_t);
     inline void groupLoad(uint16_t);
 
-    uint8_t readMem(uint16_t);
-    void writeMem(uint16_t, uint8_t);
 
-    inline void unimpl(uint16_t);
-
-    uint16_t mButtons = 0;
-
-    bool mWaitKey;
+    // ALU group 0x8xxx
+    inline void aluLd(uint8_t x, uint8_t y);
+    inline void aluAnd(uint8_t x, uint8_t y);
+    inline void aluOr(uint8_t x, uint8_t y);
+    inline void aluXor(uint8_t x, uint8_t y);
+    inline void aluAdd(uint8_t x, uint8_t y);
+    inline void aluSub(uint8_t x, uint8_t y);
+    inline void aluSubn(uint8_t x, uint8_t y);
+    inline void aluShl(uint8_t x);
+    inline void aluShr(uint8_t x);
 
     void scrollLeft();
     void scrollRight();

@@ -181,100 +181,102 @@ void Chip8::groupSys(uint16_t inst) {
 }
 
 // 0x1xxx jump
-void Chip8::groupJump(uint16_t inst) {
+inline void Chip8::groupJump(uint16_t inst) {
     mPC = imm12(inst);
 }
 
 // 02xxx call
-void Chip8::groupCall(uint16_t inst) {
+inline void Chip8::groupCall(uint16_t inst) {
     // What does original interpreter do?
-    if(mSP > 16) {
-        Serial.print("STACK OVERFLOW -- ");
+    if(mSP >= 16) {
+        Serial.print(F("STACK OVERFLOW -- "));
         Serial.println(mPC, HEX);
         mRunning = false;
         return;
     }
     mStack[mSP++] = mPC;
-    //Serial.print(mPC, HEX);
-    //Serial.print(" CALL ");
     mPC = imm12(inst);
-    //Serial.println(mPC, HEX);
 }
 
 // 0x3000 skip if equal immediate
-void Chip8::groupSeImm(uint16_t inst) {
+inline void Chip8::groupSeImm(uint16_t inst) {
     if(mV[x(inst)] == imm8(inst)) {
         mPC+=2;
     }
 }
 
 // 0x4xxxx skip if not equal immediate
-void Chip8::groupSneImm(uint16_t inst) {
+inline void Chip8::groupSneImm(uint16_t inst) {
     if(mV[x(inst)] != imm8(inst)) {
         mPC+=2;
     }
 }
 
 // 0x5xxx skip if two registers hold equal values
-void Chip8::groupSeReg(uint16_t inst) {
+inline void Chip8::groupSeReg(uint16_t inst) {
     if(mV[x(inst)] == mV[y(inst)]) {
         mPC+=2;
     }
 }
 
 //0x6xxx
-void Chip8::groupLdImm(uint16_t inst) {
+inline void Chip8::groupLdImm(uint16_t inst) {
     mV[x(inst)] = (uint8_t)inst;
 }
 
 //0x7xxx add immediate
-void Chip8::groupAddImm(uint16_t inst) {
+inline void Chip8::groupAddImm(uint16_t inst) {
     mV[x(inst)] += imm8(inst);
 }
 
-void Chip8::unimpl(uint16_t inst) {
-    Serial.print("UN ");
+inline void Chip8::unimpl(uint16_t inst) {
     Serial.println(inst, HEX);
     mRunning = false;
 }
 
 //0x8xx0 - ALU
+inline void Chip8::aluLd(uint8_t x, uint8_t y) { mV[x] = mV[y]; }
+inline void Chip8::aluOr(uint8_t x, uint8_t y) { mV[x] = mV[x] | mV[y]; }
+inline void Chip8::aluAnd(uint8_t x, uint8_t y) { mV[x] = mV[x] & mV[y]; }
+inline void Chip8::aluXor(uint8_t x, uint8_t y) { mV[x] = mV[x] ^ mV[y]; }
+inline void Chip8::aluAdd(uint8_t x, uint8_t y) { 
+    uint16_t result_carry = mV[x] + mV[y];
+    mV[x] = mV[x] + mV[y]; 
+    mV[0xF] = result_carry > 0x00FF ? 1 : 0;
+}
+inline void Chip8::aluSub(uint8_t x, uint8_t y) { 
+    mV[0xF] = mV[x] > mV[y]; 
+    mV[x] = mV[x] - mV[y];
+}
+
+inline void Chip8::aluSubn(uint8_t x, uint8_t y) { 
+    mV[0xF] = mV[y] > mV[x]; 
+    mV[x] = mV[y] - mV[x];
+}
+
+inline void Chip8::aluShr(uint8_t x) { 
+    mV[0xF] = mV[x]&0x1 ? 1 : 0;
+    mV[x] >>= 1;
+}
+
+inline void Chip8::aluShl(uint8_t x) { 
+    mV[0xF] = mV[x]&0x80 ? 1 : 0;
+    mV[x] <<= 1;
+}
+
+
+
 void Chip8::groupALU(uint16_t inst) {
-    uint16_t result_carry;
     switch (inst&0xF) {
-        case 0x0: // LD Vx, Vy
-            mV[x(inst)] = mV[y(inst)];
-            break;
-        case 0x1: // Vx = Vx | Vy
-            mV[x(inst)] = mV[x(inst)] | mV[y(inst)];
-            break;
-        case 0x2: // Vx = Vx & Vy
-            mV[x(inst)] = mV[x(inst)] & mV[y(inst)];
-            break;
-        case 0x3: // Vx = Vx ^ Vy
-            mV[x(inst)] = mV[x(inst)] ^ mV[y(inst)];
-            break;
-        case 0x4: // Vx = Vx + Vy
-            result_carry = mV[x(inst)] + mV[y(inst)];
-            mV[0xF] = result_carry > 0x00FF ? 1 : 0;
-            mV[x(inst)] = result_carry;
-            break;
-        case 0x5: // Vx = Vx - Vy
-            mV[0xF] = mV[x(inst)] > mV[y(inst)]; 
-            mV[x(inst)] = mV[x(inst)] - mV[y(inst)];
-            break;
-        case 0x6: // Vx = Vx SHR 1
-            mV[0xF] = mV[x(inst)]&0x1 ? 1 : 0;
-            mV[x(inst)] >>= 1;
-            break;
-        case 0x7: // Vx = Vy - Vx
-            mV[0xF] = mV[y(inst)] > mV[x(inst)]; 
-            mV[x(inst)] = mV[y(inst)] - mV[x(inst)];
-            break;
-        case 0xE: // Vx = Vx SHL 1
-            mV[0xF] = mV[x(inst)]&0x80 ? 1 : 0;
-            mV[x(inst)] <<= 1;
-            break;
+        case 0x0: return aluLd(x(inst), y(inst));
+        case 0x1: return aluOr(x(inst), y(inst));
+        case 0x2: return aluAnd(x(inst), y(inst));
+        case 0x3: return aluXor(x(inst), y(inst));
+        case 0x4: return aluAdd(x(inst), y(inst));
+        case 0x5: return aluSub(x(inst), y(inst));
+        case 0x6: return aluShr(x(inst));
+        case 0x7: return aluSubn(x(inst), y(inst));
+        case 0xE: return aluShl(x(inst));
         default:
             unimpl(inst);
     }
