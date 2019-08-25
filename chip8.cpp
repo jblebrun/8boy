@@ -70,7 +70,9 @@ void Chip8::Reset() {
     mRunning = true;
     mBoy.clear();
     mHires = false;
-    mCellIndex = 0;
+    for(uint8_t i = 0; i < SLAB_COUNT; i++) {
+        mSlabs[i].page = 0;
+    }
 }
 
 bool Chip8::Running() {
@@ -100,17 +102,6 @@ void Chip8::Step() {
     uint8_t lo = pgm_read_byte(&mProgram[mPC+1-0x200]);
     uint16_t inst = (uint16_t(hi << 8) | lo) ;
 
-    /*
-    Serial.print(mPC, HEX);
-    Serial.print(":");
-    Serial.print(inst, HEX);
-    Serial.print(" [");
-    for(int i = 0; i < 16; i++) {
-        Serial.print(mV[i], HEX);
-        Serial.print(" ");
-    }
-    Serial.println("]");
-    */
     mPC+=2;
     switch (inst >> 12) {
         case 0x0: return groupSys(inst);
@@ -377,6 +368,12 @@ void Chip8::groupKeyboard(uint16_t inst) {
 }
 
 uint8_t Chip8::readMem(uint16_t addr) {
+
+    Slab* slab = findSlab(addr);
+    if(slab && slab->page != 0) {
+        return slab->data[addr&0xF];
+    }
+
     if(mHires && addr < sizeof(fonthi)) {
         return pgm_read_byte(&fonthi[addr]);
     }
@@ -385,73 +382,50 @@ uint8_t Chip8::readMem(uint16_t addr) {
         return pgm_read_byte(&font[addr]);
     }
 
-    uint8_t val;
-    if(readCell(addr, &val)) {
-        writeCell(addr, val);
-        return val;
-    }
-
     if(addr < mProgramSize) {
         return pgm_read_byte(&mProgram[addr-0x200]);
-    } else {
-        if(addr-mProgramSize > MEM_SIZE) {
-            Serial.print(F("OVER READ "));
-            Serial.println(addr, HEX);
-            mRunning = false;
-        }
-        return mM[addr-mProgramSize];
-    }
+    } 
+
+    mBoy.setCursor(0, 0);
+    mBoy.print(F("bad read at "));
+    mBoy.print(addr, HEX);
+    mRunning = false;
+    return 0;
 }
 
 
-uint8_t* Chip8::findCell(uint16_t addr) {
-    for(int i = 1; i <= mCellIndex; i++) {
-        uint16_t offset = MEM_SIZE - i*3;
-        if(*((uint16_t*)(mM+offset)) == addr) {
-            return &mM[offset+2];
+// For address 0x0ABC, 
+// Find slab 0xAB.
+Slab* Chip8::findSlab(uint16_t addr) {
+    uint8_t page = addr >> 4;
+    for(uint8_t i = 0; i < SLAB_COUNT; i++) {
+        if(mSlabs[i].page == page || mSlabs[i].page == 0) {
+            return &mSlabs[i];
         }
     }
     return NULL;
 }
 
-bool Chip8::readCell(uint16_t addr, uint8_t *val) {
-    uint8_t *cell = findCell(addr);
-    if(cell) {
-        *val = *cell;
-    }
-    return cell;
-}
-
-void Chip8::writeCell(uint16_t addr, uint8_t val) {
-    uint8_t *cell = findCell(addr);
-    if(cell) {
-        *cell = val;
-        return;
-    }
-    if(mCellIndex * 3 >= MEM_SIZE) {
-        Serial.println(F("NO MORE CELLS"));
-        return;
-    }
-    Serial.print(F("ADD CELL "));
-    Serial.println(addr, HEX);
-    mCellIndex++;
-    uint16_t offset = MEM_SIZE - mCellIndex*3;
-    *((uint16_t*)(mM+offset)) = addr;
-    mM[offset+2] = val;
-
-}
-
 void Chip8::writeMem(uint16_t addr, uint8_t val) {
-    if(addr < mProgramSize) {
-        writeCell(addr, val);
-    } else {
-        if(addr-mProgramSize > MEM_SIZE) {
-            Serial.print(F("OVERWRITE "));
-            Serial.println(addr, HEX);
-            mRunning = false;
-        }
-        mM[addr-mProgramSize] = val;
+    Slab *slab = findSlab(addr);
+    if(!slab) {
+        mBoy.setCursor(0, 0);
+        mBoy.print(F("OOM AT "));
+        mBoy.print(addr, HEX);
+        return;
     }
+    if(slab->page == 0) {
+        slab->page = addr >> 4;
+        uint16_t pageStart = addr & 0xFF0;
+        for(uint8_t i = 0; i < 16; i++) {
+            if(pageStart + i < mProgramSize) {
+                slab->data[i] = pgm_read_byte(&mProgram[(pageStart|i)-0x200]);
+            } else {
+                slab->data[i] = 0;
+            }
+        }
+    }
+    slab->data[addr&0xF] = val;
 }
 
 inline void Chip8::readDT(uint8_t into) { mV[into] = mDT; }

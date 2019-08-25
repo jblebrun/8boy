@@ -2,7 +2,13 @@
 #include <Arduboy2.h>
 
 
-#define MEM_SIZE 1024
+#define SLAB_SIZE 16
+#define SLAB_COUNT 32
+
+struct Slab {
+    uint8_t page;
+    uint8_t data[SLAB_SIZE];
+};
 
 class Chip8;
 
@@ -37,18 +43,11 @@ class Chip8 {
     void run();
     inline void unimpl(uint16_t);
 
-
     // Memory
-    uint8_t mM[MEM_SIZE];
+    Slab mSlabs[SLAB_COUNT];
     uint8_t readMem(uint16_t);
     void writeMem(uint16_t, uint8_t);
-
-    // Cell memory
-    // For writes inside of the program space
-    uint8_t mCellIndex = 0;
-    bool readCell(uint16_t, uint8_t*);
-    void writeCell(uint16_t, uint8_t);
-    uint8_t* findCell(uint16_t);
+    Slab* findSlab(uint16_t);
 
     
     // instruction handlers
