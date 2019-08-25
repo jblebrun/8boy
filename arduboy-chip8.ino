@@ -19,11 +19,15 @@ uint8_t keymap[3] = {0x12, 0x3C, 0xAB};
 
 unsigned long next = 0;
 void runEmu() {
+    if(boy.nextFrame()) {
+        emu.Tick();
+    }
+    
     unsigned long t = micros();
     if(t < next) {
         return;
     }
-    next = t + 200;
+    next = t + 450;
     if(boy.pressed(UP_BUTTON) &&
             boy.pressed(DOWN_BUTTON) && 
             boy.pressed(LEFT_BUTTON) && 
@@ -33,6 +37,7 @@ void runEmu() {
     }
 
 
+    boy.pollButtons();
     uint16_t buttons = 0;
     if(boy.pressed(UP_BUTTON)) buttons |= (1 << (keymap[0] >> 4));
     if(boy.pressed(DOWN_BUTTON)) buttons |= (1 << (keymap[0] & 0xF));
@@ -42,7 +47,6 @@ void runEmu() {
     if(boy.pressed(B_BUTTON)) buttons |= (1 << (keymap[2] & 0xF));
 
     emu.Buttons(buttons);
-    boy.pollButtons();
     if(emu.Running()) {
         emu.Step();
     } else if(boy.justPressed(A_BUTTON)) {

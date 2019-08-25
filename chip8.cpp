@@ -70,17 +70,20 @@ void Chip8::Reset() {
     mRunning = true;
     mBoy.clear();
     mHires = false;
+    beep.noTone();
     for(uint8_t i = 0; i < SLAB_COUNT; i++) {
         mSlabs[i].page = 0;
     }
 }
 
-void Chip8::Buttons(uint16_t buttons) {
+void Chip8::Tick() {
     beep.timer();
     if(mDT > 0) {
         mDT--;
     }
+}
     
+void Chip8::Buttons(uint16_t buttons) {
     mButtons = buttons;
     if (mWaitKey && buttons) {
         mWaitKey = false;
@@ -439,7 +442,9 @@ inline void Chip8::waitK(uint8_t into) {
     mWaitKey = true;
 }
 inline void Chip8::setDT(uint8_t from) { mDT = mV[from]; }
-inline void Chip8::makeBeep(uint16_t dur) { beep.tone(beep.freq(880), dur); }
+inline void Chip8::makeBeep(uint16_t dur) { 
+    beep.tone(beep.freq(1200), dur/6); 
+}
 inline void Chip8::addI(uint8_t from) { mI += mV[from]; }
 inline void Chip8::ldiFont(uint8_t from) { mI = 5 * mV[from]; }
 inline void Chip8::ldiHiFont(uint8_t from) { mI = 10 * mV[from]; }

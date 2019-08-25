@@ -108,6 +108,7 @@ class Chip8 {
        void Reset();
        void Step();
        void Buttons(uint16_t buttons);
+       void Tick();
        bool Running() { return mRunning; }
        void Toggle() { mRunning = !mRunning; };
 
