@@ -32,7 +32,7 @@ class Chip8 {
 #define MEM_SIZE 512
     uint8_t mM[MEM_SIZE];
 
-#define MAX_CELLS 16
+#define MAX_CELLS 48
     uint8_t mCellIndex = 0;
     uint16_t mCellAddrs[MAX_CELLS];
     uint8_t mCellValues[MAX_CELLS];
@@ -135,7 +135,7 @@ class Chip8 {
        void Load(const uint8_t program[], uint16_t size);
        void Reset();
        void Step();
-       void Buttons(uint8_t buttons);
+       void Buttons(uint16_t buttons);
        bool Running();
        void Toggle();
 

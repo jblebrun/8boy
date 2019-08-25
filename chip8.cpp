@@ -74,6 +74,7 @@ void Chip8::Reset() {
     mRunning = true;
     mBoy.clear();
     mHires = false;
+    mCellIndex = 0;
 }
 
 bool Chip8::Running() {
@@ -84,7 +85,7 @@ void Chip8::Toggle() {
     mRunning = !mRunning;
 }
 
-void Chip8::Buttons(uint8_t buttons) {
+void Chip8::Buttons(uint16_t buttons) {
     beep.timer();
     if(mDT > 0) {
         mDT--;
@@ -321,15 +322,6 @@ void Chip8::groupGraphics(uint16_t inst) {
 
     bool collide = false;
 
-    Serial.print(mPC-2, HEX);
-    Serial.print("-- DRAW ");
-    Serial.print(mI, HEX);
-    Serial.print(", ");
-    Serial.print(rows);
-    Serial.print(" at ");
-    Serial.print(x);
-    Serial.print(", ");
-    Serial.println(y);
     uint8_t scale = mHires ? 1 : 2;
     mV[0xF] = 0;
     for(int row = 0; row < rows; row++) {
@@ -428,6 +420,8 @@ void Chip8::writeCell(uint16_t addr, uint8_t val) {
         Serial.println(F("NO MORE CELLS"));
         return;
     }
+    Serial.print("ADD CELL ");
+    Serial.println(addr, HEX);
     mCellAddrs[mCellIndex] = addr;
     mCellValues[mCellIndex++] = val;
 }

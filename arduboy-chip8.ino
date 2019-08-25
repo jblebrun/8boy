@@ -15,6 +15,7 @@ void setup() {
 
 uint8_t pidx;
 const Program *program;
+const uint8_t keymap[3] = {0x36, 0x78, 0xAB};
 
 unsigned long next = 0;
 void runEmu() {
@@ -22,7 +23,7 @@ void runEmu() {
     if(t < next) {
         return;
     }
-    next = t + 100;
+    next = t + 500;
     if(boy.pressed(UP_BUTTON) &&
             boy.pressed(DOWN_BUTTON) && 
             boy.pressed(LEFT_BUTTON) && 
@@ -31,11 +32,16 @@ void runEmu() {
         program = NULL;
     }
 
-    boy.pollButtons();
-    if(boy.justPressed(A_BUTTON)) {
-        emu.Toggle();
-    }
-    emu.Buttons(boy.buttonsState());
+
+    uint16_t buttons = 0;
+    if(boy.pressed(UP_BUTTON)) buttons |= (1 << (keymap[0] >> 4));
+    if(boy.pressed(DOWN_BUTTON)) buttons |= (1 << (keymap[0] & 0xF));
+    if(boy.pressed(LEFT_BUTTON)) buttons |= (1 << (keymap[1] >> 4));
+    if(boy.pressed(RIGHT_BUTTON)) buttons |= (1 << (keymap[1] & 0xF));
+    if(boy.pressed(A_BUTTON)) buttons |= (1 << (keymap[2] >> 4));
+    if(boy.pressed(B_BUTTON)) buttons |= (1 << (keymap[2] & 0xF));
+
+    emu.Buttons(buttons);
     if(emu.Running()) {
         emu.Step();
     }
