@@ -24,11 +24,6 @@ public:
     virtual void beep(uint8_t dur);
     virtual void render();
     virtual void clear();
-    virtual void stackUnderflow(uint16_t addr);
-    virtual void stackOverflow(uint16_t addr);
-    virtual void oom(uint16_t addr);
-    virtual void badread(uint16_t addr);
     virtual void exit();
-    virtual void unimpl(uint16_t addr, uint16_t inst);
     virtual uint8_t random();
 };

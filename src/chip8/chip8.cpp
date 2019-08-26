@@ -1,6 +1,6 @@
 #include "chip8.hpp"
 
-Chip8::Chip8(Render &render, Memory &mem) : mRender(render), mMemory(mem) { }
+Chip8::Chip8(Render &render, Errors &errors, Memory &mem) : mRender(render), mErrors(errors), mMemory(mem) { }
 
 void Chip8::Reset() {
     mPC = 0x200;
@@ -69,7 +69,7 @@ inline void Chip8::cls() {
 
 inline void Chip8::ret() {
     if(mSP == 0) {
-        mRender.stackUnderflow(mPC-2);
+        mErrors.stackUnderflow(mPC-2);
         mRunning = false;
         return;
     }
@@ -99,7 +99,7 @@ inline void Chip8::groupSys(uint16_t inst) {
             case 0x00FE: return setSuperhires(false);
             case 0x00FF: return setSuperhires(true);
             case 0x0230: return cls();
-            default: mRender.unimpl(mPC-2, inst);
+            default: mErrors.unimpl(mPC-2, inst);
         }
     }
 }
@@ -114,7 +114,7 @@ inline void Chip8::groupJump(uint16_t inst) {
 inline void Chip8::groupCall(uint16_t inst) {
     // What does original interpreter do?
     if(mSP >= 16) {
-        mRender.stackOverflow(mPC-2);
+        mErrors.stackOverflow(mPC-2);
         return;
     }
     mStack[mSP++] = mPC;
@@ -199,7 +199,7 @@ void Chip8::groupALU(uint16_t inst) {
         case 0x7: return aluSubn(x(inst), y(inst));
         case 0xE: return aluShl(x(inst), y(inst));
         default:
-            mRender.unimpl(mPC-2, inst);
+            mErrors.unimpl(mPC-2, inst);
     }
 }
 
@@ -218,7 +218,7 @@ void Chip8::groupLdiImm(uint16_t inst) {
 
 // 0xBxxx jump to I + xxx
 void Chip8::groupJpV0Index(uint16_t inst) {
-    mRender.unimpl(mPC-2, inst);
+    mErrors.unimpl(mPC-2, inst);
     //mPC = mI+imm12(inst);
 }
 
@@ -292,7 +292,7 @@ void Chip8::groupKeyboard(uint16_t inst) {
             }
             break;
         default:
-            mRender.unimpl(mPC-2, inst);
+            mErrors.unimpl(mPC-2, inst);
     }
 }
 
@@ -356,13 +356,13 @@ void Chip8::groupLoad(uint16_t inst) {
         case 0x75: return strR(x(inst));
         case 0x85: return ldR(x(inst));
         default:
-            mRender.unimpl(mPC-2, inst);
+            mErrors.unimpl(mPC-2, inst);
     }
 }
 
 inline void Chip8::writeMem(uint16_t addr, uint8_t val) {
     if(!mMemory.write(addr, val)) {
-        mRender.oom(mPC-2);
+        mErrors.oom(mPC-2);
         mRunning = false;
     }
 }
@@ -370,7 +370,7 @@ inline void Chip8::writeMem(uint16_t addr, uint8_t val) {
 inline uint8_t Chip8::readMem(uint16_t addr) {
     uint8_t val;
     if(!mMemory.read(addr, val)) {
-        mRender.badread(mPC-2);
+        mErrors.badread(mPC-2);
         mRunning = false;
     }
     return val;

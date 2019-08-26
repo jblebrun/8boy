@@ -2,6 +2,7 @@
 
 #include "render.hpp"
 #include "memory.hpp"
+#include "errors.hpp"
 #include "chip8-reg.hpp"
 
 #include <stdint.h>
@@ -9,6 +10,7 @@
 
 class Chip8 {
     Render &mRender;
+    Errors &mErrors;
 
     // registers
     // PC starts to 200 conventionally
@@ -90,7 +92,7 @@ class Chip8 {
 
     public:
        // create a new Chip8 emulator with the provided renderer and memory implementations.
-       Chip8(Render &render, Memory &memory);
+       Chip8(Render &render, Errors &errors, Memory &memory);
 
        // reset the state of the emulator (clear internal registers, screen, etc.
        void Reset();

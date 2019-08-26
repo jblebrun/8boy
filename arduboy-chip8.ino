@@ -4,14 +4,16 @@
 
 #include "programs.h"
 #include "arduboy-render.hpp"
+#include "arduboy-errors.hpp"
 #include "chip8-mem.hpp"
 
 
 Arduboy2 boy;
 ArduMem memory;
 
+ArduboyErrors errors(boy);
 ArduboyRender render(boy);
-Chip8 emu(render, memory);
+Chip8 emu(render, errors, memory);
 
 void setup() {
     boy.begin();

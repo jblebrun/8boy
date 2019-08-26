@@ -60,39 +60,10 @@ void ArduboyRender::clear() {
     mBoy.clear();
 }
 
-void ArduboyRender::stackUnderflow(uint16_t addr) {
-    mBoy.setCursor(0,0);
-    mBoy.print(F("UNDERFLOW "));
-    mBoy.print(addr, HEX);
-}
-void ArduboyRender::stackOverflow(uint16_t addr) {
-    mBoy.setCursor(0,0);
-    mBoy.print(F("OVERFLOW "));
-    mBoy.print(addr, HEX);
-}
-void ArduboyRender::oom(uint16_t addr) {
-    mBoy.setCursor(0,0);
-    mBoy.print(F("OOM "));
-    mBoy.print(addr, HEX);
-}
-void ArduboyRender::badread(uint16_t addr) {
-    mBoy.setCursor(0,0);
-    mBoy.print(F("BAD READ "));
-    mBoy.print(addr, HEX);
-}
 void ArduboyRender::exit() {
     mBoy.setCursor(0,0);
     mBoy.print(F("Press key to restart"));
 }
-
-void ArduboyRender::unimpl(uint16_t addr, uint16_t inst) {
-    mBoy.setCursor(0,0);
-    mBoy.print(F("UNIMPL "));
-    mBoy.print(addr, HEX);
-    mBoy.print(F(":"));
-    mBoy.print(inst, HEX);
-}
- 
 uint8_t ArduboyRender::random() {
     return ::random(0xFF);
 }
