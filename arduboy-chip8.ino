@@ -1,8 +1,11 @@
 #include <Arduboy2.h>
-#include "chip8.hpp"
+
+#include "src/chip8/chip8.hpp"
+
 #include "programs.h"
 #include "arduboy-render.hpp"
 #include "chip8-mem.hpp"
+
 
 Arduboy2 boy;
 ArduMem memory;

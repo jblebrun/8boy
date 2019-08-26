@@ -1,35 +1,10 @@
 #pragma once
 
+#include "render.hpp"
+#include "memory.hpp"
+#include "chip8-reg.hpp"
+
 #include <stdint.h>
-
-class Render {
-    public:
-    virtual bool getPixel(uint8_t x, uint8_t y) = 0;
-    virtual void drawPixel(uint8_t x, uint8_t y, bool on) = 0;
-    virtual void scrollDown(uint8_t amt) = 0;
-    virtual void scrollLeft() = 0;
-    virtual void scrollRight() = 0;
-    virtual void beep(uint8_t dur) = 0;
-    virtual void render() = 0;
-    virtual uint8_t random() = 0;
-    virtual void clear() = 0;
-
-    // errors
-    virtual void stackUnderflow(uint16_t addr) = 0;
-    virtual void stackOverflow(uint16_t addr) = 0;
-    virtual void oom(uint16_t addr) = 0;
-    virtual void badread(uint16_t addr) = 0;
-    virtual void exit() = 0;
-    virtual void unimpl(uint16_t addr, uint16_t inst) = 0;
-};
-
-class Memory {
-    public: 
-        virtual void load(const uint8_t *program, const uint16_t size) = 0;
-        virtual bool read(uint16_t addr, uint8_t &val) = 0;
-        virtual bool write(uint16_t addr, uint8_t val) = 0;
-        virtual void reset() = 0;
-};
 
 
 class Chip8 {
@@ -114,12 +89,25 @@ class Chip8 {
 
 
     public:
-       Chip8(Render &boy, Memory &memory);
+       // create a new Chip8 emulator with the provided renderer and memory implementations.
+       Chip8(Render &render, Memory &memory);
+
+       // reset the state of the emulator (clear internal registers, screen, etc.
        void Reset();
+
+       // execute one instruction
        void Step();
+
+       // update the state of the buttons (masked, one bit for each key 0-F)
        void Buttons(uint16_t buttons);
+
+       // update the 60Hz delay timer
        void Tick();
+
+       // returns true if the emulator is running
        bool Running() { return mRunning; }
+
+       // if the emulator is stopped, start it, and vice-versa
        void Toggle() { mRunning = !mRunning; };
 
 };
