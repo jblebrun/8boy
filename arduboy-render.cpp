@@ -92,3 +92,7 @@ void ArduboyRender::unimpl(uint16_t addr, uint16_t inst) {
     mBoy.print(F(":"));
     mBoy.print(inst, HEX);
 }
+ 
+uint8_t ArduboyRender::random() {
+    return ::random(0xFF);
+}

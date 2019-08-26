@@ -1,7 +1,6 @@
 #pragma once
 
 #include <stdint.h>
-#include <Arduino.h>
 
 class Render {
     public:
@@ -12,6 +11,7 @@ class Render {
     virtual void scrollRight() = 0;
     virtual void beep(uint8_t dur) = 0;
     virtual void render() = 0;
+    virtual uint8_t random() = 0;
     virtual void clear() = 0;
 
     // errors

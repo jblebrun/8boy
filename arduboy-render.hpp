@@ -30,4 +30,5 @@ public:
     virtual void badread(uint16_t addr);
     virtual void exit();
     virtual void unimpl(uint16_t addr, uint16_t inst);
+    virtual uint8_t random();
 };

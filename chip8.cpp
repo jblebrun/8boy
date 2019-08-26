@@ -1,5 +1,4 @@
 #include "chip8.hpp"
-#include <Arduino.h>
 
 
 Chip8::Chip8(Render &render, Memory &mem) : mRender(render), mMemory(mem) { }
@@ -29,7 +28,6 @@ void Chip8::Tick() {
 void Chip8::Buttons(uint16_t buttons) {
     mButtons = buttons;
     if (mWaitKey && buttons) {
-        Serial.println("GOT KEY");
         mWaitKey = false;
         mRunning = true;
     }
@@ -235,7 +233,7 @@ void Chip8::groupJpV0Index(uint16_t inst) {
 
 //0xCxxx random
 void Chip8::groupRand(uint16_t inst) {
-    mV[x(inst)] = random(0xFF) & imm8(inst);
+    mV[x(inst)] = mRender.random() & imm8(inst);
 }
 
 //0xDxxx - draw
