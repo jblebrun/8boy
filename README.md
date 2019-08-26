@@ -1,17 +1,23 @@
-Arduboy Chip8
+# Arduboy Chip8
 
 ## What is it?
 
 It's a CHIP-8 (and SCHIP-8) emulator for Arduboy. CHIP-8 was a virtual machine that ran on an 8-bit microcontroller in the 1970s! Take that, Java.
 
-The COSMAC VIP (and family) was an affordable computer kit based on the RCA COSMAC 1802 CPU. It came with a simple 16-key hex keyboard, the ability to show simple monochrome graphics on a television, some memory, and a beeper.
+The COSMAC VIP (and family) was an affordable computer kit based on the RCA COSMAC 1802 CPU. It came with a simple 16-key hex keyboard, the ability to show simple monochrome graphics on a television, some memory, and a beeper. It was the successor to the COSMAC ELF, which was quite similar, but without the video chip. If you're interested in older platforms like this, I *highly* recommend checking out [Lee Hart's ElectroniKits](http://www.sunrise-ev.com/projects.htm). He has really well done kits that pay homage to both of these COSMAC platforms, but shrunken to fit in an Altoids tin!
 
-CHIP-8 was part of the ROM "operating system" included with the kit. This 512-byte OS ROM contained routines for interacting with the hardware, but (more importantly) it contained a simple virtual machine called CHIP-8. Programs could be written using this simpler machine language.
+CHIP-8 was part of the ROM "operating system" included with the COSMAC VIP kit. This 512-byte OS ROM contained routines for interacting with the hardware, but (more importantly) it contained a simple virtual machine called CHIP-8. Programs could be written using this simpler machine language. 
 
-While many emulators for the CHIP-8 instruction set have been written since, one of the more popular ones was written for the HP-48 calculator. In addition to running CHIP-8 games, it included a few extensions to allow higher resolution, scrolling, and a bit more memory.
+While many emulators for the CHIP-8 instruction set have been written since, one of the more popular ones was written for the HP-48 calculator by [David Winters](http://www.pong-story.com/chip8/). In addition to running CHIP-8 games, it included a few extensions to allow higher resolution, scrolling, and a bit more memory, often referred to a "Super Chip-8" (or SCHIP-8).
 
 There are endless resources online about CHIP-8 (and SCHIP-8) emulators. Because of the ease of implementation, these platforms are popular emulation targets.
 
+Some great resources include:
+* http://devernay.free.fr/hacks/chip8/C8TECH10.HTM
+* http://benryves.com/bin/vinegar/
+* http://mattmik.com/files/chip8/mastering/chip8.html
+* http://www.pong-story.com/chip8/
+* Original COSMAC VIP manual: http://cosmacelf.com/forumarchive/files/VIP/Cosmac%20VIP%20Manual.pdf
 
 ## How does this work?
 
@@ -27,6 +33,11 @@ You can also include `name.map` for keymappings (see below), and `name.info` to 
 ## Implementation Notes
 There are a few limitations to the Arduboy that make it non-trivial to port CHIP-8 games to this platform. Here's how they've been addressed:
 
+### Be careful about information out there!
+
+This is an old platform, which has seen many implementations, and has lots written about it. Here are some things I've noticed along the way:
+
+* Some documentation incorrectly describes the behavior of register VF during subtraction operations (notably, Cowgod's 
 ### Memory
 
 The CHIP-8 instruction set is capable of addressing up to 4kb of memory. The Arduboy has only 2.5kb of RAM (a large chunk of which is taken up by the screen buffer!). However, all of the games I've found so far don't actively use more than a few hundred bytes of memory at runtime. Since the program data is stored in flash, we just need a solution to figure out how to satisfy memory reads and writes as the programs execute.
@@ -38,5 +49,13 @@ A strategy that's been working well for every game so far is to use a "slab allo
 
 The CHIP-8 runs on the COSMAC VIP, with a 16-key keypad. The Arduboy has 6 keys. Conveniently, most games only use a subset of the keys. Unfortunately, the subset tends to be different for each game. So, it's necessary to figure out which keys a game needs, then a mapping file can be included in the `/rom` directory. 
 
-The mapping file is simply a text representation of 3 bytes as they would appear in an array initializer in C. The 3 bytes correspond to 6 nibbles in the order: U, D, L, R, A, B, mapping them to one of the 16 keys on the COSMAC VIP keypad.
+The mapping file is simply a text representation of 3 bytes as they would appear in an array initializer in C. The 3 bytes correspond to 6 nibbles in the order: U, D, L, R, A, B, mapping them to one of the 16 keys on the COSMAC VIP keypad. (which are labeled by one of the 16 hexidecimal digits 0-F).
+
+For example, if the map file contains the text: `0x28, 0x46, 0xAB` then:
+* Up -> keypad key 2
+* Down -> keypad key 8
+* Left -> keypad key 4
+* Right -> keypad key 6
+* A -> keypad key A
+* B -> keypad key B
 
