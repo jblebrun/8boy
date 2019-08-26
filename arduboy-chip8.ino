@@ -1,16 +1,17 @@
 #include <Arduboy2.h>
 #include "chip8.hpp"
 #include "programs.h"
+#include "arduboy-render.hpp"
 
 Arduboy2 boy;
-Chip8 emu(boy);
+ArduboyRender render(boy);
+Chip8 emu(render);
 
 void setup() {
     boy.begin();
     boy.initRandomSeed();
     Serial.begin(115200);
     boy.setFrameRate(60);
-    //while(!Serial);
 }
 
 uint8_t pidx;
@@ -21,6 +22,7 @@ uint8_t keymap[3] = {0x12, 0x3C, 0xAB};
 unsigned long next = 0;
 void runEmu() {
     if(boy.nextFrame()) {
+        render.tick();
         emu.Tick();
     }
     

@@ -94,10 +94,8 @@ uint8_t Chip8::readMem(uint16_t addr) {
         return pgm_read_byte(&mProgram[addr-0x200]);
     } 
 
-    mBoy.setCursor(0, 0);
-    mBoy.print(F("bad read at "));
-    mBoy.print(addr, HEX);
-    halt();
+    mRender.badread(mPC-2);
+    mRunning = false;
     return 0;
 }
 
@@ -113,10 +111,8 @@ uint8_t Chip8::readMem(uint16_t addr) {
 void Chip8::writeMem(uint16_t addr, uint8_t val) {
     Slab *slab = findSlab(addr);
     if(!slab) {
-        mBoy.setCursor(0, 0);
-        mBoy.print(F("OOM AT "));
-        mBoy.print(addr, HEX);
-        halt();
+        mRender.oom(mPC-2);
+        mRunning = false;
         return;
     }
 
