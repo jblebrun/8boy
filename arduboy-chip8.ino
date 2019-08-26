@@ -15,6 +15,7 @@ void setup() {
 
 uint8_t pidx;
 const Program *program;
+bool super = false;
 uint8_t keymap[3] = {0x12, 0x3C, 0xAB};
 
 unsigned long next = 0;
@@ -27,7 +28,7 @@ void runEmu() {
     if(t < next) {
         return;
     }
-    next = t + 450;
+    next = t + (super ? 100 : 1000);
     if(boy.pressed(UP_BUTTON) &&
             boy.pressed(DOWN_BUTTON) && 
             boy.pressed(LEFT_BUTTON) && 
@@ -57,21 +58,21 @@ void runEmu() {
 void runLoader() {
     boy.clear();
     boy.setCursor(0,0);
-    bool super = pgm_read_byte(&programs[pidx].super);
+    super = pgm_read_byte(&programs[pidx].super);
     boy.print(F("Select: "));
     boy.setCursor(0,30);
     boy.print(pidx);
     boy.setCursor(16,30);
     char buffer[16];
     strcpy_P(buffer, (const char*)pgm_read_ptr(&programs[pidx].name));
-    boy.print(buffer);
-
-    boy.setCursor(0,50);
+    boy.println(buffer);
     if(super) {
-        boy.print(F("SCHIP-8"));
+        boy.println(F("SCHIP-8"));
     } else {
-        boy.print(F("CHIP-8"));
+        boy.println(F("CHIP-8"));
     }
+    strcpy_P(buffer, (const char*)pgm_read_ptr(&programs[pidx].info));
+    boy.println(buffer);
     boy.display();
 
     boy.pollButtons();
@@ -92,7 +93,7 @@ void runLoader() {
         uint16_t size = pgm_read_word(&(program->size));
         const uint8_t* code = pgm_read_ptr(&(program->code));
         for(int i = 0; i < 3; i++) {
-            keymap[i] = pgm_read_byte(&keymaps[pidx][i]);
+            keymap[i] = pgm_read_byte(&(program->keymap[i]));
             Serial.print(keymap[i], HEX);
             Serial.print("   ");
         }

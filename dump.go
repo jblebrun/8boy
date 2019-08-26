@@ -163,6 +163,7 @@ type program struct {
 	size     int
 	super    bool
 	keymap   string
+	info     string
 }
 
 // Load key map as six bytes to write out as array literal:
@@ -171,19 +172,21 @@ const defaultMap = "0x14, 0x3C, 0xAB"
 
 func loadKeyMap(dir, filename string) string {
 	basename := strings.TrimSuffix(filename, filepath.Ext(filename))
-	f, err := os.Open(filepath.Join(dir, basename+".map"))
-	if err != nil {
-		log.Println("no map, using default:", err)
-		return defaultMap
-	}
-
-	km, err := ioutil.ReadAll(f)
+	km, err := ioutil.ReadFile(filepath.Join(dir, basename+".map"))
 	if err != nil {
 		log.Println("no map, using default:", err)
 		return defaultMap
 	}
 	return strings.Trim(string(km), "\n")
+}
 
+func loadInfo(dir, filename string) string {
+	basename := strings.TrimSuffix(filename, filepath.Ext(filename))
+	info, err := ioutil.ReadFile(filepath.Join(dir, basename+".info"))
+	if err != nil {
+		log.Println("no info for", filename)
+	}
+	return strings.Trim(string(info), "\n")
 }
 
 func getProgram(dir, filename string) *program {
@@ -196,7 +199,8 @@ func getProgram(dir, filename string) *program {
 		return nil
 	}
 	kmap := loadKeyMap(dir, filename)
-	return &program{name: nicename, codename: codename, size: size, keymap: kmap, super: ext == ".sch8"}
+	info := loadInfo(dir, nicename)
+	return &program{name: nicename, codename: codename, info: info, size: size, keymap: kmap, super: ext == ".sch8"}
 }
 
 func dumpAllRoms(dir string) {
@@ -211,6 +215,8 @@ func dumpAllRoms(dir string) {
 	fmt.Println("    const uint8_t *code;")
 	fmt.Println("    const uint16_t size;")
 	fmt.Println("    const bool super;")
+	fmt.Println("    const uint8_t *info;")
+	fmt.Println("    const uint8_t keymap[3];")
 	fmt.Println("};")
 	var ps []*program
 	for _, filename := range files {
@@ -224,27 +230,21 @@ func dumpAllRoms(dir string) {
 	}
 
 	fmt.Printf("const uint8_t PROGRAM_COUNT = %d;\n", len(ps))
-	stringset := make(map[string]struct{})
 	for _, p := range ps {
-		if _, ok := stringset[p.name]; !ok {
-			fmt.Printf("const char n%s[] PROGMEM = \"%s\";\n", p.name, p.name)
-			stringset[p.name] = struct{}{}
-		}
+		fmt.Printf("const char name_%s[] PROGMEM = \"%s\";\n", p.codename, p.name)
 	}
 
-	fmt.Println("const uint8_t keymaps[][3] PROGMEM = {")
 	for _, p := range ps {
-		fmt.Printf("    {%s},\n", p.keymap)
+		fmt.Printf("const uint8_t info_%s[] PROGMEM = \"%s\";\n", p.codename, p.info)
 	}
-	fmt.Println("};\n")
 
 	fmt.Println("const Program programs[] PROGMEM = {")
 	for _, p := range ps {
-		superField := ""
+		superField := "0"
 		if p.super {
-			superField = ", .super=1"
+			superField = "1"
 		}
-		fmt.Printf("    (Program){ .name=n%s, .code=%s, .size=%d%s },\n", p.name, p.codename, p.size, superField)
+		fmt.Printf("    (Program){ .name=name_%s, .code=%s, .size=%d, .super=%s, .info=info_%s, .keymap={%s} },\n", p.codename, p.codename, p.size, superField, p.codename, p.keymap)
 	}
 	fmt.Println("};")
 }
