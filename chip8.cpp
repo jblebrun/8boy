@@ -2,12 +2,7 @@
 #include <Arduino.h>
 
 
-Chip8::Chip8(Render &render) : mRender(render) { }
-
-void Chip8::Load(const uint8_t *program, const uint16_t size) {
-    mProgram = program;
-    mProgramSize = size;
-}
+Chip8::Chip8(Render &render, Memory &mem) : mRender(render), mMemory(mem) { }
 
 void Chip8::Reset() {
     mPC = 0x200;
@@ -19,9 +14,7 @@ void Chip8::Reset() {
     mSuperhires = false;
     mRender.clear();
     mRender.beep(0);
-    for(uint8_t i = 0; i < SLAB_COUNT; i++) {
-        mSlabs[i].page = 0;
-    }
+    mMemory.reset();
 }
 
 // Tick updates any state that gets updated at 60Hz by chip-8
@@ -44,8 +37,8 @@ void Chip8::Buttons(uint16_t buttons) {
 
 void Chip8::Step() {
     // endian fix
-    uint8_t hi = pgm_read_byte(&mProgram[mPC-0x200]);
-    uint8_t lo = pgm_read_byte(&mProgram[mPC+1-0x200]);
+    uint8_t hi = readMem(mPC);
+    uint8_t lo = readMem(mPC+1);
     uint16_t inst = (uint16_t(hi << 8) | lo) ;
 
     if(mPC == 0x200 && inst == 0x1260) {
@@ -378,5 +371,20 @@ void Chip8::groupLoad(uint16_t inst) {
     }
 }
 
+inline void Chip8::writeMem(uint16_t addr, uint8_t val) {
+    if(!mMemory.write(addr, val)) {
+        mRender.oom(mPC-2);
+        mRunning = false;
+    }
+}
+
+inline uint8_t Chip8::readMem(uint16_t addr) {
+    uint8_t val;
+    if(!mMemory.read(addr, val)) {
+        mRender.badread(mPC-2);
+        mRunning = false;
+    }
+    return val;
+}
 
 
