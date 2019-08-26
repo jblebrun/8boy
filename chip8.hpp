@@ -3,14 +3,6 @@
 #include <stdint.h>
 #include <Arduino.h>
 
-#define SLAB_SIZE 16
-#define SLAB_COUNT 40
-
-struct Slab {
-    uint8_t page;
-    uint8_t data[SLAB_SIZE];
-};
-
 class Render {
     public:
     virtual bool getPixel(uint8_t x, uint8_t y) = 0;
@@ -31,13 +23,18 @@ class Render {
     virtual void unimpl(uint16_t addr, uint16_t inst) = 0;
 };
 
+class Memory {
+    public: 
+        virtual void load(const uint8_t *program, const uint16_t size) = 0;
+        virtual bool read(uint16_t addr, uint8_t &val) = 0;
+        virtual bool write(uint16_t addr, uint8_t val) = 0;
+        virtual void reset() = 0;
+};
+
+
 class Chip8 {
     Render &mRender;
 
-    // Program info
-    const uint8_t *mProgram;
-    uint16_t mProgramSize;
-    
     // registers
     // PC starts to 200 conventionally
     // we handle the offset when reading PC
@@ -48,6 +45,7 @@ class Chip8 {
     uint16_t mDT;
     uint8_t mSP = 0;
     uint16_t mStack[16];
+    Memory &mMemory;
 
     // Other state
     bool mHires = false;
@@ -57,10 +55,8 @@ class Chip8 {
     bool mWaitKey;
     
     // Memory
-    Slab mSlabs[SLAB_COUNT];
     uint8_t readMem(uint16_t);
     void writeMem(uint16_t, uint8_t);
-    Slab* findSlab(uint16_t);
 
     
     // instruction handlers
@@ -118,8 +114,7 @@ class Chip8 {
 
 
     public:
-       Chip8(Render &boy);
-       void Load(const uint8_t program[], uint16_t size);
+       Chip8(Render &boy, Memory &memory);
        void Reset();
        void Step();
        void Buttons(uint16_t buttons);

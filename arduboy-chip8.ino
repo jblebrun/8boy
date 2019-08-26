@@ -2,10 +2,13 @@
 #include "chip8.hpp"
 #include "programs.h"
 #include "arduboy-render.hpp"
+#include "chip8-mem.hpp"
 
 Arduboy2 boy;
+ArduMem memory;
+
 ArduboyRender render(boy);
-Chip8 emu(render);
+Chip8 emu(render, memory);
 
 void setup() {
     boy.begin();
@@ -100,7 +103,7 @@ void runLoader() {
             Serial.print("   ");
         }
         Serial.println("");
-        emu.Load(code, size);
+        memory.load(code, size);
         emu.Reset();
 
     }

@@ -1,4 +1,4 @@
-#include "chip8.hpp"
+#include "chip8-mem.hpp"
 
 const uint8_t font[] PROGMEM = {
     0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
@@ -53,6 +53,17 @@ const uint8_t fonthi[] PROGMEM = {
     0xF0, 0x80, 0xF0, 0x80, 0x80, // F
 };
 
+void ArduMem::load(const uint8_t *program, const uint16_t size) {
+    mProgram = program;
+    mProgramSize = size;
+}
+
+void ArduMem::reset() {
+    for(uint8_t i = 0; i < SLAB_COUNT; i++) {
+        mSlabs[i].page = 0;
+    }
+}
+
 // Try to find an already-allocated slab for the provided address.
 // This works by searching through the current list of slabs for as
 // long as we see slabs with a page identifier != 0.
@@ -60,7 +71,7 @@ const uint8_t fonthi[] PROGMEM = {
 // If we reach an unused slab, we return that, the caller can decide
 // to allocate it if desired.
 // If the end of the list is reached with no match, NULL is returned.
-Slab* Chip8::findSlab(uint16_t addr) {
+Slab* ArduMem::findSlab(uint16_t addr) {
     uint8_t page = addr >> 4;
     for(uint8_t i = 0; i < SLAB_COUNT; i++) {
         if(mSlabs[i].page == page || mSlabs[i].page == 0) {
@@ -76,27 +87,31 @@ Slab* Chip8::findSlab(uint16_t addr) {
 // (2) if the address in the low space, assume it's for a font, use that.
 // (3) If the adddress is in the program space, read from the program in flash.
 // (4) Uh - oh, something wasn't considered. Halt and show a message.
-uint8_t Chip8::readMem(uint16_t addr) {
+// If true is returned, the val reference passed in will hold the result.
+// If false is returned, the read was bad.
+bool ArduMem::read(uint16_t addr, uint8_t &val) {
     Slab* slab = findSlab(addr);
     if(slab && slab->page != 0) {
-        return slab->data[addr&0xF];
+        val = slab->data[addr&0xF];
+        return true;
     }
 
     if(addr < (sizeof(font) + sizeof(fonthi))) {
-        return pgm_read_byte(&fonthi[addr]);
+        val = pgm_read_byte(&fonthi[addr]);
+        return true;
     }
 
     if(addr < sizeof(font)) {
-        return pgm_read_byte(&font[addr]);
+        val = pgm_read_byte(&font[addr]);
+        return true;
     }
 
     if(addr < mProgramSize) {
-        return pgm_read_byte(&mProgram[addr-0x200]);
+        val = pgm_read_byte(&mProgram[addr-0x200]);
+        return true;
     } 
 
-    mRender.badread(mPC-2);
-    mRunning = false;
-    return 0;
+    return false;
 }
 
 // writeMem finds or allocates a slab of memory and
@@ -108,12 +123,10 @@ uint8_t Chip8::readMem(uint16_t addr) {
 // page for the requested address. 
 // If the page overlaps with any program memory, the program
 // memory is copied into the slab.
-void Chip8::writeMem(uint16_t addr, uint8_t val) {
+bool ArduMem::write(uint16_t addr, uint8_t val) {
     Slab *slab = findSlab(addr);
     if(!slab) {
-        mRender.oom(mPC-2);
-        mRunning = false;
-        return;
+        return false;
     }
 
     // If slab is new, set it up
@@ -131,4 +144,5 @@ void Chip8::writeMem(uint16_t addr, uint8_t val) {
     }
 
     slab->data[addr&0xF] = val;
+    return true;
 }
