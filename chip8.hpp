@@ -1,6 +1,7 @@
-#include <stdint.h>
-#include <Arduboy2.h>
+#pragma once
 
+#include <stdint.h>
+#include <Arduino.h>
 
 #define SLAB_SIZE 16
 #define SLAB_COUNT 40
@@ -10,15 +11,28 @@ struct Slab {
     uint8_t data[SLAB_SIZE];
 };
 
-class Chip8;
+class Render {
+    public:
+    virtual bool getPixel(uint8_t x, uint8_t y) = 0;
+    virtual void drawPixel(uint8_t x, uint8_t y, bool on) = 0;
+    virtual void scrollDown(uint8_t amt) = 0;
+    virtual void scrollLeft() = 0;
+    virtual void scrollRight() = 0;
+    virtual void beep(uint8_t dur) = 0;
+    virtual void render() = 0;
+    virtual void clear() = 0;
 
-typedef void(Chip8::*groupFunc)(uint16_t);
+    // errors
+    virtual void stackUnderflow(uint16_t addr) = 0;
+    virtual void stackOverflow(uint16_t addr) = 0;
+    virtual void oom(uint16_t addr) = 0;
+    virtual void badread(uint16_t addr) = 0;
+    virtual void exit() = 0;
+    virtual void unimpl(uint16_t addr, uint16_t inst) = 0;
+};
 
 class Chip8 {
-
-    // Rendering
-    Arduboy2 &mBoy;
-    BeepPin1 beep;
+    Render &mRender;
 
     // Program info
     const uint8_t *mProgram;
@@ -42,10 +56,6 @@ class Chip8 {
     uint16_t mButtons = 0;
     bool mWaitKey;
     
-    void run();
-    inline void halt();
-    inline void unimpl(uint16_t);
-
     // Memory
     Slab mSlabs[SLAB_COUNT];
     uint8_t readMem(uint16_t);
@@ -108,7 +118,7 @@ class Chip8 {
 
 
     public:
-       Chip8(Arduboy2 &boy);
+       Chip8(Render &boy);
        void Load(const uint8_t program[], uint16_t size);
        void Reset();
        void Step();

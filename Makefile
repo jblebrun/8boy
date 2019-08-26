@@ -4,7 +4,7 @@ install: arduboy-chip8.arduino.avr.leonardo.hex
 programs.h: roms/* dump.go
 	go run dump.go roms > programs.h
 
-arduboy-chip8.arduino.avr.leonardo.hex: programs.h chip8.hpp chip8.cpp chip8-mem.cpp arduboy-chip8.ino
+arduboy-chip8.arduino.avr.leonardo.hex: programs.h chip8.hpp chip8.cpp chip8-mem.cpp arduboy-render.cpp arduboy-render.hpp arduboy-chip8.ino
 	arduino-cli compile -b arduino:avr:leonardo
 
 

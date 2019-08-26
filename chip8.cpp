@@ -2,9 +2,7 @@
 #include <Arduino.h>
 
 
-Chip8::Chip8(Arduboy2 &boy) : mBoy(boy) {
-    beep.begin();
-}
+Chip8::Chip8(Render &render) : mRender(render) { }
 
 void Chip8::Load(const uint8_t *program, const uint16_t size) {
     mProgram = program;
@@ -19,8 +17,8 @@ void Chip8::Reset() {
     mRunning = true;
     mHires = false;
     mSuperhires = false;
-    mBoy.clear();
-    beep.noTone();
+    mRender.clear();
+    mRender.beep(0);
     for(uint8_t i = 0; i < SLAB_COUNT; i++) {
         mSlabs[i].page = 0;
     }
@@ -29,8 +27,7 @@ void Chip8::Reset() {
 // Tick updates any state that gets updated at 60Hz by chip-8
 // namely, beep timer and delay timer, and triggers screen draw.
 void Chip8::Tick() {
-    mBoy.display();
-    beep.timer();
+    mRender.render();
     if(mDT > 0) {
         mDT--;
     }
@@ -85,26 +82,17 @@ inline uint16_t imm12(uint16_t inst) { return inst&0xFFF; }
 
 
 inline void Chip8::cls() {
-    mBoy.clear();
+    mRender.clear();
 }
 
 inline void Chip8::ret() {
     if(mSP == 0) {
-        mBoy.setCursor(0,0);
-        mBoy.print(F("ST UNDER"));
-        halt();
+        mRender.stackUnderflow(mPC-2);
+        mRunning = false;
         return;
     }
     mSP--;
     mPC = mStack[mSP];
-}
-
-inline void Chip8::halt() {
-    mBoy.setCursor(0,16);
-    mBoy.print(F("HALT @ "));
-    mBoy.println(mPC-2, HEX);
-    mBoy.display();
-    mRunning = false;
 }
 
 inline void Chip8::setSuperhires(bool enabled) {
@@ -112,26 +100,24 @@ inline void Chip8::setSuperhires(bool enabled) {
 }
 
 inline void Chip8::exit() {
+    mRender.exit();
     mRunning = false;
-    mBoy.print("PRESS B TO RESET");
-    mBoy.display();
 }
 
 
 inline void Chip8::groupSys(uint16_t inst) {
     switch(inst >> 4) {
-        case 0x00C: return scrollDown(inst&0x000F);
+        case 0x00C: return mRender.scrollDown(inst&0x000F);
         default: switch(inst) {
             case 0x00E0: return cls();
             case 0x00EE: return ret();
-            case 0x00FB: return scrollRight();
-            case 0x00FC: return scrollLeft();
+            case 0x00FB: return mRender.scrollRight();
+            case 0x00FC: return mRender.scrollLeft();
             case 0x00FD: return exit();
             case 0x00FE: return setSuperhires(false);
             case 0x00FF: return setSuperhires(true);
             case 0x0230: return cls();
-            default:
-                        unimpl(inst);
+            default: mRender.unimpl(mPC-2, inst);
         }
     }
 }
@@ -145,9 +131,7 @@ inline void Chip8::groupJump(uint16_t inst) {
 inline void Chip8::groupCall(uint16_t inst) {
     // What does original interpreter do?
     if(mSP >= 16) {
-        mBoy.setCursor(0,0);
-        mBoy.print(F("ST OVER "));
-        halt();
+        mRender.stackOverflow(mPC-2);
         return;
     }
     mStack[mSP++] = mPC;
@@ -184,13 +168,6 @@ inline void Chip8::groupLdImm(uint16_t inst) {
 inline void Chip8::groupAddImm(uint16_t inst) {
     mV[x(inst)] += imm8(inst);
     // no carry?
-}
-
-inline void Chip8::unimpl(uint16_t inst) {
-    mBoy.setCursor(0, 0);
-    mBoy.print(F("UNIMPL - "));
-    mBoy.print(inst, HEX);
-    halt();
 }
 
 //0x8xx0 - ALU
@@ -241,7 +218,7 @@ void Chip8::groupALU(uint16_t inst) {
         case 0x7: return aluSubn(x(inst), y(inst));
         case 0xE: return aluShl(x(inst), y(inst));
         default:
-            unimpl(inst);
+            mRender.unimpl(mPC-2, inst);
     }
 }
 
@@ -259,7 +236,7 @@ void Chip8::groupLdiImm(uint16_t inst) {
 
 // 0xBxxx jump to I + xxx
 void Chip8::groupJpV0Index(uint16_t inst) {
-    unimpl(inst);
+    mRender.unimpl(mPC-2, inst);
     //mPC = mI+imm12(inst);
 }
 
@@ -300,15 +277,15 @@ void Chip8::groupGraphics(uint16_t inst) {
             uint8_t py = scaley*((yc+row)%(64/scaley));
             uint8_t px = scalex*((xc+col)%(128/scalex));
 
-            bool wasOn = (mBoy.getPixel(px, py) == WHITE);
-            uint8_t newColor = wasOn ^ on ? WHITE : BLACK;
+            bool wasOn = mRender.getPixel(px, py);
+            uint8_t newColor = wasOn ^ on;
             mV[0xF] |= (wasOn & on) ? 1 : 0;
-            mBoy.drawPixel(px,py, newColor);
+            mRender.drawPixel(px,py, newColor);
             if(!mSuperhires) {
-                mBoy.drawPixel(px+1,py, newColor);
+                mRender.drawPixel(px+1,py, newColor);
                 if(!mHires) {
-                    mBoy.drawPixel(px+1,py+1, newColor);
-                    mBoy.drawPixel(px,py+1, newColor);
+                    mRender.drawPixel(px+1,py+1, newColor);
+                    mRender.drawPixel(px,py+1, newColor);
                 }
             }
             rowData<<=1;
@@ -333,13 +310,9 @@ void Chip8::groupKeyboard(uint16_t inst) {
             }
             break;
         default:
-            unimpl(inst);
+            mRender.unimpl(mPC-2, inst);
     }
 }
-
-
-
-
 
 
 inline void Chip8::readDT(uint8_t into) { mV[into] = mDT; }
@@ -349,7 +322,7 @@ inline void Chip8::waitK(uint8_t into) {
 }
 inline void Chip8::setDT(uint8_t from) { mDT = mV[from]; }
 inline void Chip8::makeBeep(uint16_t dur) { 
-    beep.tone(beep.freq(1200), dur/6); 
+    mRender.beep(dur);
 }
 inline void Chip8::addI(uint8_t from) { mI += mV[from]; }
 inline void Chip8::ldiFont(uint8_t from) { mI = 5 * mV[from]; }
@@ -401,37 +374,9 @@ void Chip8::groupLoad(uint16_t inst) {
         case 0x75: return strR(x(inst));
         case 0x85: return ldR(x(inst));
         default:
-            unimpl(inst);
+            mRender.unimpl(mPC-2, inst);
     }
 }
 
-inline void Chip8::scrollDown(uint8_t amt) {
-    uint8_t skip = amt/8;
-    for(int page = 7; page >= 0; page--) {
-       for(int col = 0; col < WIDTH; col++) {
-           mBoy.sBuffer[page*WIDTH+col] <<= amt;
-           uint8_t above = (page > skip) ? mBoy.sBuffer[(page-1-skip)*WIDTH+col] >> (8-amt) : 0;
-           mBoy.sBuffer[page*WIDTH+col] |= above;
-       } 
-      
-    }
-}
 
-inline void Chip8::scrollLeft() {
-    // Screen buffer is laid out in 8 pages,
-    // page 0 is rows 0-7, all columns, imagine a sequence of vertical bytes
-    // similar for page 1-7; 
-    for(int page = 0; page < 8; page++) {
-        for(int col=0; col < WIDTH-4; col++) {
-            mBoy.sBuffer[page*WIDTH + col] = mBoy.sBuffer[page*WIDTH + col + 4];
-        }
-        for(int col=WIDTH-4; col < WIDTH; col++) {
-            mBoy.sBuffer[page*WIDTH + col] = 0;
-        }
-    }
-}
-
-inline void Chip8::scrollRight() {
-    unimpl(mPC);
-}
 
