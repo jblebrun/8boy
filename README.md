@@ -29,15 +29,24 @@ CHIP-8 games should use the filename format `name.ch8`, where name is a valid pr
 
 You can also include `name.map` for keymappings (see below), and `name.info` to include a small info string to display in the program loader menu.
 
+The program loader makes a feeble attempt at disassembly, which it will show in comments next to the generated code. Note that it is easily confused: data will be interpreted by code since without flow analysis, there's no way to tell that the bytes are data. Similarly, if data is odd-sized, and program instructions become aligned on odd bytes instead of even, the disassembly will be garbage.
+
 
 ## Implementation Notes
 There are a few limitations to the Arduboy that make it non-trivial to port CHIP-8 games to this platform. Here's how they've been addressed:
 
-### Be careful about information out there!
+### Be careful about implementations!
 
 This is an old platform, which has seen many implementations, and has lots written about it. Here are some things I've noticed along the way:
 
-* Some documentation incorrectly describes the behavior of register VF during subtraction operations (notably, Cowgod's 
+* Some documentation incorrectly describes the behavior of register VF during subtraction operations. Quite a few of the popular resources have this wrong, but the COSMAC VIP manual does give the correct information.
+
+* In some implementations, the register load/store from memory operations leave the I register pointing to the end of memory space that was worked with. But some games don't operate correctly if this is the behavior.
+
+* I was sloppy, and for a long time didn't notice that the random implementation is rand(0xFF) & value -- which leads to almost correct but subtle weird behavior in some games.
+
+* More generally: there are a lot of subtle details to get wrong, and it's easy for things to more or less seem to work correctly. Writing some functional tests for the operations probably would have saved me a lot of time debugging just to find out that a `^` should have been an `&`, or a `(a & !b)` should have been `(a & b)`. Especially in that pesky drawing routine!
+
 ### Memory
 
 The CHIP-8 instruction set is capable of addressing up to 4kb of memory. The Arduboy has only 2.5kb of RAM (a large chunk of which is taken up by the screen buffer!). However, all of the games I've found so far don't actively use more than a few hundred bytes of memory at runtime. Since the program data is stored in flash, we just need a solution to figure out how to satisfy memory reads and writes as the programs execute.
