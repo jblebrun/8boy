@@ -346,7 +346,7 @@ void Chip8::groupGraphics(uint16_t inst) {
         for(int col = 0; col < cols; col++) {
             bool on = rowData&mask;
             uint8_t py = scaley*((yc+row)%(64/scaley));
-            uint8_t px = scalex*((xc+col)%(128*scalex));
+            uint8_t px = scalex*((xc+col)%(128/scalex));
 
             bool wasOn = (mBoy.getPixel(px, py) == WHITE);
             uint8_t newColor = wasOn ^ on ? WHITE : BLACK;
