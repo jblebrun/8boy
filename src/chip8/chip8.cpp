@@ -1,6 +1,5 @@
 #include "chip8.hpp"
 
-
 Chip8::Chip8(Render &render, Memory &mem) : mRender(render), mMemory(mem) { }
 
 void Chip8::Reset() {
@@ -64,14 +63,6 @@ void Chip8::Step() {
     }
 }
 
-// inst read helpers
-inline uint8_t x(uint16_t inst) { return (inst>>8)&0x0F; }
-inline uint8_t y(uint16_t inst) { return (inst>>4)&0x0F; }
-inline uint8_t imm4(uint16_t inst) { return inst&0x0F; }
-inline uint8_t imm8(uint16_t inst) { return inst; }
-inline uint16_t imm12(uint16_t inst) { return inst&0xFFF; }
-
-
 inline void Chip8::cls() {
     mRender.clear();
 }
@@ -112,6 +103,7 @@ inline void Chip8::groupSys(uint16_t inst) {
         }
     }
 }
+
 
 // 0x1xxx jump
 inline void Chip8::groupJump(uint16_t inst) {
@@ -195,8 +187,6 @@ inline void Chip8::aluShl(uint8_t x, uint8_t y) {
     mV[x] = mV[x] << 1;
 }
 
-
-
 void Chip8::groupALU(uint16_t inst) {
     switch (inst&0xF) {
         case 0x0: return aluLd(x(inst), y(inst));
@@ -212,6 +202,7 @@ void Chip8::groupALU(uint16_t inst) {
             mRender.unimpl(mPC-2, inst);
     }
 }
+
 
 // 0x9xxx - Skip if two registers hold inequal values
 void Chip8::groupSneReg(uint16_t inst) {
