@@ -8,7 +8,7 @@ The COSMAC VIP (and family) was an affordable computer kit based on the RCA COSM
 
 CHIP-8 was part of the ROM "operating system" included with the COSMAC VIP kit. This 512-byte OS ROM contained routines for interacting with the hardware, but (more importantly) it contained a simple virtual machine called CHIP-8. Programs could be written using this simpler machine language. 
 
-While many emulators for the CHIP-8 instruction set have been written since, one of the more popular ones was written for the HP-48 calculator by [David Winters](http://www.pong-story.com/chip8/). In addition to running CHIP-8 games, it included a few extensions to allow higher resolution, scrolling, and a bit more memory, often referred to a "Super Chip-8" (or SCHIP-8).
+While many emulators for the CHIP-8 instruction set have been written since, one of the more popular ones was written for the HP-48 calculator by Erik Bryntse. In addition to running CHIP-8 games, it included a few extensions to allow higher resolution, scrolling, and a bit more memory, often referred to a "Super Chip-8" (or SCHIP-8).
 
 There are endless resources online about CHIP-8 (and SCHIP-8) emulators. Because of the ease of implementation, these platforms are popular emulation targets.
 
