@@ -1,6 +1,6 @@
 #pragma once
 #include <Arduboy2.h>
-#include "src/chip8/errors.hpp"
+#include "../chip8/errors.hpp"
 
 class ArduboyErrors : public Errors {
     Arduboy2 &mBoy;

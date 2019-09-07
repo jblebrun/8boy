@@ -1,6 +1,6 @@
 #pragma once
 
-#include "src/chip8/memory.hpp"
+#include "../chip8/memory.hpp"
 #include <Arduino.h>
 
 #define SLAB_SIZE 16

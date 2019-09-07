@@ -3,9 +3,9 @@
 #include "src/chip8/chip8.hpp"
 
 #include "programs.h"
-#include "arduboy-render.hpp"
-#include "arduboy-errors.hpp"
-#include "chip8-mem.hpp"
+#include "src/arduboy/render.hpp"
+#include "src/arduboy/errors.hpp"
+#include "src/arduboy/mem.hpp"
 
 
 Arduboy2 boy;
@@ -110,7 +110,6 @@ void runLoader() {
         Serial.println("");
         memory.load(code, size);
         emu.Reset();
-
     }
 }
 

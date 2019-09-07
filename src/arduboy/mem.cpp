@@ -1,4 +1,4 @@
-#include "chip8-mem.hpp"
+#include "mem.hpp"
 
 const uint8_t font[] PROGMEM = {
     0xF0, 0x90, 0x90, 0x90, 0xF0, // 0

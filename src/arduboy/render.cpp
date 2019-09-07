@@ -1,4 +1,4 @@
-#include "arduboy-render.hpp"
+#include "render.hpp"
 
 ArduboyRender::ArduboyRender(Arduboy2 &boy) : mBoy(boy) {
     beepPin.begin();

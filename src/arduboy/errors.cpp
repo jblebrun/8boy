@@ -1,4 +1,4 @@
-#include "arduboy-errors.hpp"
+#include "errors.hpp"
 
 ArduboyErrors::ArduboyErrors(Arduboy2 &boy) : mBoy(boy) {}
 
