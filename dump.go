@@ -210,14 +210,14 @@ func dumpAllRoms(dir string) {
 	}
 	files := strings.Split(string(menufile), "\n")
 
-	fmt.Println("struct Program {")
-	fmt.Println("    const char *name;")
-	fmt.Println("    const uint8_t *code;")
-	fmt.Println("    const uint16_t size;")
-	fmt.Println("    const bool super;")
-	fmt.Println("    const uint8_t *info;")
-	fmt.Println("    const uint8_t keymap[3];")
-	fmt.Println("};")
+	fmt.Println(`struct Program {
+    const char *name;
+    const uint8_t *code;
+    const uint16_t size;
+    const bool super;
+    const uint8_t *info;
+    const uint8_t keymap[3];
+};`)
 	var ps []*program
 	for _, filename := range files {
 		ext := filepath.Ext(filename)
@@ -244,7 +244,15 @@ func dumpAllRoms(dir string) {
 		if p.super {
 			superField = "1"
 		}
-		fmt.Printf("    (Program){ .name=name_%s, .code=%s, .size=%d, .super=%s, .info=info_%s, .keymap={%s} },\n", p.codename, p.codename, p.size, superField, p.codename, p.keymap)
+		fmt.Printf(`    (Program){ 
+        .name=name_%s,
+        .code=%s, 
+        .size=%d, 
+        .super=%s, 
+        .info=info_%s, 
+        .keymap={%s} 
+    },
+`, p.codename, p.codename, p.size, superField, p.codename, p.keymap)
 	}
 	fmt.Println("};")
 }
