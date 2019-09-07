@@ -308,7 +308,7 @@ inline void Chip8::makeBeep(uint16_t dur) {
 }
 inline void Chip8::addI(uint8_t from) { mI += mV[from]; }
 inline void Chip8::ldiFont(uint8_t from) { mI = 5 * mV[from]; }
-inline void Chip8::ldiHiFont(uint8_t from) { mI = 10 * mV[from]; }
+inline void Chip8::ldiHiFont(uint8_t from) { mI = 0x10*5 + (10 * mV[from]); }
 inline void Chip8::writeBCD(uint8_t from) {
     uint8_t val = mV[from];
     writeMem(mI, val/100);
