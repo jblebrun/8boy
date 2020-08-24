@@ -38,9 +38,11 @@ void Chip8::Step() {
     uint8_t lo = readMem(mPC+1);
     uint16_t inst = (uint16_t(hi << 8) | lo) ;
 
+    // Hack for handling original 64x64 Hi-Res mode
+    // HiRes ML routines were at 200-248, hi-res
+    // programs started at 0x260.
     if(mPC == 0x200 && inst == 0x1260) {
         mHires = true;
-        inst = 0x12C0;
     }
     mPC+=2;
     switch (inst >> 12) {
@@ -98,7 +100,7 @@ inline void Chip8::groupSys(uint16_t inst) {
             case 0x00FD: return exit();
             case 0x00FE: return setSuperhires(false);
             case 0x00FF: return setSuperhires(true);
-            case 0x0230: return cls();
+            case 0x0230: return cls(); // Hi-Res variant
             default: mErrors.unimpl(mPC-2, inst);
         }
     }
