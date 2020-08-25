@@ -1,5 +1,13 @@
 # Arduboy Chip8
 
+## Run it!
+
+Quick version (if you are on a machine with `make` support`):
+
+1. Install arduino-cli (via `homebrew`, `apt`, etc).
+2. Install go
+3. Run `make install`
+
 ## What is it?
 
 It's a CHIP-8 (and SCHIP-8) emulator for Arduboy. CHIP-8 was a virtual machine that ran on an 8-bit microcontroller in the 1970s! Take that, Java.
@@ -18,12 +26,13 @@ Some great resources include:
 * http://mattmik.com/files/chip8/mastering/chip8.html
 * http://www.pong-story.com/chip8/
 * Original COSMAC VIP manual: http://cosmacelf.com/forumarchive/files/VIP/Cosmac%20VIP%20Manual.pdf
+* https://chip-8.github.io/ - Lots of good info on extensions and implementation quirks
 
 ## How does this work?
 
 You can specify roms to include in the Arduboy binary by including a rom in the `/roms` directory, and adding the filename to `/roms/menu`. 
 
-The easiest way to build the project is to obtain the `aduino-cli` tools, and use the provided `Makefile`. Typing make will generate a new programs.h, compile the program, and upload it to an attached Arduboy (on an OS X machine, anyway). 
+The easiest way to build the project is to obtain the `arduino-cli` tools, and use the provided `Makefile`. Typing make will generate a new programs.h, compile the program, and upload it to an attached Arduboy (on an OS X machine, anyway). 
 
 CHIP-8 games should use the filename format `name.ch8`, where name is a valid program identifier (since we just use the name as a variable name in the code). Similarly `name.sch8` indicates a super-chip8 game.
 
