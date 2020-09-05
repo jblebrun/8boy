@@ -143,12 +143,6 @@ void ArduboyRender::clear() {
     mBoy.clear();
 }
 
-// Display a message when the emulator exits.
-void ArduboyRender::exit() {
-    mBoy.setCursor(0,0);
-    mBoy.print(F("Press key to restart"));
-}
-
 // Random implementation.
 uint8_t ArduboyRender::random() {
     return ::random(0xFF);

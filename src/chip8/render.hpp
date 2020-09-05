@@ -39,9 +39,6 @@ class Render {
     // scroll the display right 4 columns
     virtual void scrollRight() = 0;
 
-    // implement if you want to perform custom actions when emulator exits
-    virtual void exit() = 0;
-
 
     // Non-drawing rendering
     

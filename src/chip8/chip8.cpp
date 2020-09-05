@@ -1,7 +1,8 @@
 #include "chip8.hpp"
 #include "render.hpp"
+#include "string.h"
 
-Chip8::Chip8(Render &render, Errors &errors, Memory &mem) : mRender(render), mErrors(errors), mMemory(mem) { }
+Chip8::Chip8(Render &render, Memory &mem) : mRender(render), mMemory(mem) { }
 
 // Reset all registers and flags for the emulator instance, clear the memory, and begin running.
 void Chip8::Reset() {
@@ -49,89 +50,101 @@ inline void Chip8::handleButtons() {
 }
 
 // Read the instruction for the current value of PC.
-inline uint16_t Chip8::readInst() {
+inline bool Chip8::readInst(uint16_t &inst) {
     // endian fix
-    uint8_t hi = readMem(mPC);
-    uint8_t lo = readMem(mPC+1);
-    return (uint16_t(hi << 8) | lo) ;
+    if(!mMemory.read(mPC, (uint8_t&)inst)) return false;
+    inst <<= 8;
+    if(!mMemory.read(mPC+1, (uint8_t&)inst)) return false;
+    return true;
 }
 
 // Read and execute one Chip8 operation. Instructions will be read from memory
 // using the provided memory implementation.
-bool Chip8::Step() {
+// If an ErrorType other than NO_ERROR is returned, then the PC will be pointing 
+// to the last instruction executed.
+ErrorType Chip8::Step() {
     handleButtons();
 
     // Let the caller know that we're not running.
-    if(!mRunning) return false;
+    if(!mRunning) return STOPPED;
 
     // We won't run any instructions while awaiting keys, but still considered
     // in the running state.
-    if(mAwaitingKey) return true;
+    if(mAwaitingKey) return NO_ERROR;
 
-    uint16_t inst = readInst();
-
-    // Hack for handling original 64x64 Hi-Res mode
-    // HiRes ML routines were at 200-248, hi-res
-    // programs started at 0x260.
-    if(mPC == 0x200 && inst == 0x1260) {
-        mRender.setMode(CHIP8HI);
+    uint16_t inst;
+    if(!readInst(inst)) {
+        mRunning = false;
+        return BAD_FETCH;
     }
 
     // Increment PC now, none of the instructions depend on its value. 
+    // This way, we don't need to keep track of whether or not the 
+    // instruction resulted in a jump.
     mPC+=2;
-    exec(inst);
-    return true;
+
+    ErrorType error = exec(inst);
+    if(error != NO_ERROR) {
+        mPC -= 2;
+        mRunning = false;
+    }
+    return error;
 }
 
-inline void Chip8::exec(uint16_t inst) {
+uint16_t Chip8::GetPC() {
+    return mPC;
+}
+
+inline ErrorType Chip8::exec(uint16_t inst) {
     // Dispatch to the instruction group based on the top nybble.
     switch (inst >> 12) {
         case 0x0: return groupSys(inst);
-        case 0x1: return groupJump(inst);
+        case 0x1: groupJump(inst); break;
         case 0x2: return groupCall(inst);
-        case 0x3: return groupSeImm(inst);
-        case 0x4: return groupSneImm(inst);
-        case 0x5: return groupSeReg(inst);
-        case 0x6: return groupLdImm(inst);
-        case 0x7: return groupAddImm(inst);
+        case 0x3: groupSeImm(inst); break;
+        case 0x4: groupSneImm(inst); break;
+        case 0x5: groupSeReg(inst); break;
+        case 0x6: groupLdImm(inst); break;
+        case 0x7: groupAddImm(inst); break;
         case 0x8: return groupALU(inst);
-        case 0x9: return groupSneReg(inst);
-        case 0xA: return groupLdiImm(inst);
-        case 0xB: return groupJpV0Index(inst);
-        case 0xC: return groupRand(inst);
+        case 0x9: groupSneReg(inst); break;
+        case 0xA: groupLdiImm(inst); break;
+        case 0xB: groupJpV0Index(inst); break;
+        case 0xC: groupRand(inst); break;
         case 0xD: return groupGraphics(inst);
         case 0xE: return groupKeyboard(inst);
         case 0xF: return groupLoad(inst);
     }
+    return NO_ERROR;
 }
 
 // 0x0XXX - System
-inline void Chip8::groupSys(uint16_t inst) {
+inline ErrorType Chip8::groupSys(uint16_t inst) {
     switch(inst >> 4) {
-        case 0x00C: return mRender.scrollDown(inst&0x000F);
+        case 0x00C: mRender.scrollDown(inst&0x000F); break;
         default: switch(inst) {
-            case 0x00E0: return mRender.clear();
+            case 0x00E0: mRender.clear(); break;
             case 0x00EE: return ret();
-            case 0x00FB: return mRender.scrollRight(); // SCHIP8
-            case 0x00FC: return mRender.scrollLeft(); // SCHIP8
-            case 0x00FD: return exit();
-            case 0x00FE: return setSuperhires(false);
-            case 0x00FF: return setSuperhires(true);
-            case 0x0230: return mRender.clear(); // Hi-Res variant
-            default: mErrors.unimpl(mPC-2, inst);
+            case 0x00FB: mRender.scrollRight(); break; // SCHIP8
+            case 0x00FC: mRender.scrollLeft(); break;  // SCHIP8
+            case 0x00FD: mRunning = false; return STOPPED;
+            case 0x00FE: setSuperhires(false); break;
+            case 0x00FF: setSuperhires(true); break;
+            case 0x0230: mRender.clear(); break; // Hi-Res variant
+            default: return UNIMPLEMENTED_INSTRUCTION; 
         }
     }
+    return NO_ERROR;
 }
 
 // 0x00EE - Return from the most recently called subroutine.
-inline void Chip8::ret() {
+inline ErrorType Chip8::ret() {
     if(mSP == 0) {
-        mErrors.stackUnderflow(mPC-2);
-        mRunning = false;
-        return;
+        return STACK_UNDERFLOW;
     }
     mSP--;
     mPC = mStack[mSP];
+    return NO_ERROR;
 }
 
 // 0x00FE/0x00FF - Enabled/Disable SChip8 hires mode.
@@ -139,27 +152,27 @@ inline void Chip8::setSuperhires(bool enabled) {
     mRender.setMode(enabled ? SCHIP8 : CHIP8);
 }
 
-// 0x00FD - Exit. Stops execution and triggers the halt message on the display.
-inline void Chip8::exit() {
-    mRender.exit();
-    mRunning = false;
-}
-
-
 // 0x1nnn jump
 inline void Chip8::groupJump(uint16_t inst) {
+    // Hack for handling original 64x64 Hi-Res mode
+    // HiRes ML routines were at 200-248, hi-res
+    // programs started at 0x260.
+    // mPC was already incremented so will be 0x202
+    if(mPC == 0x202 && inst == 0x1260) {
+        mRender.setMode(CHIP8HI);
+    }
     mPC = imm12(inst);
 }
 
 // 02nnn call
-inline void Chip8::groupCall(uint16_t inst) {
+inline ErrorType Chip8::groupCall(uint16_t inst) {
     // What does original interpreter do?
     if(mSP >= 16) {
-        mErrors.stackOverflow(mPC-2);
-        return;
+        return STACK_OVERFLOW;
     }
     mStack[mSP++] = mPC;
     mPC = imm12(inst);
+    return NO_ERROR;
 }
 
 // 0x3Xnn skip if equal immediate
@@ -195,20 +208,20 @@ inline void Chip8::groupAddImm(uint16_t inst) {
 }
 
 // 0x8XYx - ALU Group
-void Chip8::groupALU(uint16_t inst) {
+ErrorType Chip8::groupALU(uint16_t inst) {
     switch (inst&0xF) {
-        case 0x0: return aluLd(x(inst), y(inst));
-        case 0x1: return aluOr(x(inst), y(inst));
-        case 0x2: return aluAnd(x(inst), y(inst));
-        case 0x3: return aluXor(x(inst), y(inst));
-        case 0x4: return aluAdd(x(inst), y(inst));
-        case 0x5: return aluSub(x(inst), y(inst));
-        case 0x6: return aluShr(x(inst), y(inst));
-        case 0x7: return aluSubn(x(inst), y(inst));
-        case 0xE: return aluShl(x(inst), y(inst));
-        default:
-            mErrors.unimpl(mPC-2, inst);
+        case 0x0: aluLd(x(inst), y(inst)); break;
+        case 0x1: aluOr(x(inst), y(inst)); break;
+        case 0x2: aluAnd(x(inst), y(inst)); break;
+        case 0x3: aluXor(x(inst), y(inst)); break;
+        case 0x4: aluAdd(x(inst), y(inst)); break;
+        case 0x5: aluSub(x(inst), y(inst)); break;
+        case 0x6: aluShr(x(inst), y(inst)); break;
+        case 0x7: aluSubn(x(inst), y(inst)); break;
+        case 0xE: aluShl(x(inst), y(inst)); break;
+        default: return UNIMPLEMENTED_INSTRUCTION;
     }
+    return NO_ERROR;
 }
 
 // 0x8XY0   VX = Vy
@@ -277,8 +290,7 @@ void Chip8::groupLdiImm(uint16_t inst) {
 
 // 0xBnnn   jump to I + xxx
 void Chip8::groupJpV0Index(uint16_t inst) {
-    mErrors.unimpl(mPC-2, inst);
-    //mPC = mI+imm12(inst);
+    mPC = mI+imm12(inst);
 }
 
 //0xCXnn   random, with mask.
@@ -287,7 +299,7 @@ void Chip8::groupRand(uint16_t inst) {
 }
 
 //0xDXYL   draw! If you think there's a bug in here, you're probably right.
-void Chip8::groupGraphics(uint16_t inst) {
+ErrorType Chip8::groupGraphics(uint16_t inst) {
     // The number of lines in the sprite that we should draw.
     uint8_t rows = imm4(inst);
     // X, Y location of the sprite, from registers.
@@ -317,11 +329,17 @@ void Chip8::groupGraphics(uint16_t inst) {
         // Collect the data to draw from memory.
         uint16_t rowData;
         if(superSprite) {
-            rowData = readMem(mI+row*2);
+            if(!mMemory.read(mI+row*2, reinterpret_cast<uint8_t&>(rowData))) {
+                return BAD_READ;
+            }
             rowData <<= 8;
-            rowData |= readMem(mI+row*2+1);
+            if(!mMemory.read(mI+row*2+1, reinterpret_cast<uint8_t&>(rowData))) {
+                return BAD_READ;
+            }
         } else {
-            rowData = readMem(mI+row);
+            if(!mMemory.read(mI+row, reinterpret_cast<uint8_t&>(rowData))) {
+                return BAD_READ;
+            }
         }
 
         for(int col = 0; col < cols; col++) {
@@ -335,10 +353,11 @@ void Chip8::groupGraphics(uint16_t inst) {
 
         }
     }
+    return NO_ERROR;
 }
 
 // 0xEX9E / 0xEXA1 - skip if key pressed/not pressed
-void Chip8::groupKeyboard(uint16_t inst) {
+ErrorType Chip8::groupKeyboard(uint16_t inst) {
     uint8_t key = mV[x(inst)];
     uint16_t mask = 0x01 << key;
     switch(imm8(inst)) {
@@ -352,29 +371,29 @@ void Chip8::groupKeyboard(uint16_t inst) {
                 mPC += 2;
             }
             break;
-        default:
-            mErrors.unimpl(mPC-2, inst);
+        default: return UNIMPLEMENTED_INSTRUCTION;
     }
+    return NO_ERROR;
 }
 
 // 0xFnnn - Load to various internal registers
-void Chip8::groupLoad(uint16_t inst) {
+ErrorType Chip8::groupLoad(uint16_t inst) {
     switch(inst&0xFF) {
-        case 0x07: return readDT(x(inst));
-        case 0xA: return waitK(x(inst));
-        case 0x15: return setDT(x(inst));
-        case 0x18: return makeBeep(x(inst));
-        case 0x1E: return addI(x(inst));
-        case 0x29: return ldiFont(x(inst));
-        case 0x30: return ldiHiFont(x(inst));
+        case 0x07: readDT(x(inst)); break;
+        case 0xA: waitK(x(inst)); break;
+        case 0x15: setDT(x(inst)); break;
+        case 0x18: makeBeep(x(inst)); break;
+        case 0x1E: addI(x(inst)); break;
+        case 0x29: ldiFont(x(inst)); break;
+        case 0x30: ldiHiFont(x(inst)); break;
         case 0x33: return writeBCD(x(inst));
         case 0x55: return strReg(x(inst));
         case 0x65: return ldReg(x(inst));
-        case 0x75: return strR(x(inst));
-        case 0x85: return ldR(x(inst));
-        default:
-            mErrors.unimpl(mPC-2, inst);
+        case 0x75: strR(x(inst)); break;
+        case 0x85: ldR(x(inst)); break;
+        default: return UNIMPLEMENTED_INSTRUCTION;
     }
+    return NO_ERROR;
 }
 
 // 0xFX07 - Read delay timer into VX.
@@ -404,25 +423,28 @@ inline void Chip8::ldiFont(uint8_t from) { mI = 5 * mV[from]; }
 inline void Chip8::ldiHiFont(uint8_t from) { mI = 0x10*5 + (10 * mV[from]); }
 
 // 0xFX33 - Write binary coded decimal encoding of VX to memory pointed to by I.
-inline void Chip8::writeBCD(uint8_t from) {
+inline ErrorType Chip8::writeBCD(uint8_t from) {
     uint8_t val = mV[from];
-    writeMem(mI, val/100);
-    writeMem(mI+1, (val/10)%10);
-    writeMem(mI+2, val%10);
+    if(!mMemory.write(mI, val/100)) return OUT_OF_MEMORY;
+    if(!mMemory.write(mI+1, (val/10)%10)) return OUT_OF_MEMORY;
+    if(!mMemory.write(mI+2, val%10)) return OUT_OF_MEMORY;
+    return NO_ERROR;
 }
 
 // 0xFX55 - Store V0-VX starting at I.
-inline void Chip8::strReg(uint8_t upto) {
+inline ErrorType Chip8::strReg(uint8_t upto) {
     for(int i = 0; i <= upto; i++) {
-        writeMem(mI+i, mV[i]);
+        if(!mMemory.write(mI+i, mV[i])) return OUT_OF_MEMORY;
     }
+    return NO_ERROR;
 }
 
 // 0xFX65 - Read into V0-VX starting at I.
-inline void Chip8::ldReg(uint8_t upto) {
+inline ErrorType Chip8::ldReg(uint8_t upto) {
     for(int i = 0; i <= upto; i++) {
-        mV[i] = readMem(mI+i);
+        if(!mMemory.read(mI+i, mV[i])) return BAD_READ;
     }
+    return NO_ERROR;
 }
 
 
@@ -439,24 +461,3 @@ inline void Chip8::ldR(uint8_t upto) {
         mV[i] = mR[i];
     }
 }
-
-
-// Memory write helper for instruction implementation.
-inline void Chip8::writeMem(uint16_t addr, uint8_t val) {
-    if(!mMemory.write(addr, val)) {
-        mErrors.oom(mPC-2);
-        mRunning = false;
-    }
-}
-
-// Memory read helper for instruction implementation.
-inline uint8_t Chip8::readMem(uint16_t addr) {
-    uint8_t val;
-    if(!mMemory.read(addr, val)) {
-        mErrors.badread(mPC-2);
-        mRunning = false;
-    }
-    return val;
-}
-
-
