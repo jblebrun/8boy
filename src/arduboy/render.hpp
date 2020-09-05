@@ -12,11 +12,14 @@ private:
     
     void message(uint16_t addr, uint16_t inst);
 
+    uint8_t mPixelWidth = 2; 
+    uint8_t mPixelHeight = 2;
+
 public:
     ArduboyRender(Arduboy2 &boy);
     void tick();
-    virtual bool getPixel(uint8_t x, uint8_t y); 
-    virtual void drawPixel(uint8_t x, uint8_t y, bool on);
+    virtual void setMode(RenderMode mode);
+    virtual bool drawPixel(uint8_t x, uint8_t y, bool drawVal);
     virtual void scrollDown(uint8_t amt);
     virtual void scrollLeft();
     virtual void scrollRight();

@@ -1,4 +1,5 @@
 #include "chip8.hpp"
+#include "render.hpp"
 
 Chip8::Chip8(Render &render, Errors &errors, Memory &mem) : mRender(render), mErrors(errors), mMemory(mem) { }
 
@@ -9,9 +10,8 @@ void Chip8::Reset() {
     mDT = 0;
     mSP = 0;
     mRunning = true;
-    mHires = false;
-    mSuperhires = false;
     mRender.clear();
+    mRender.setMode(CHIP8);
     mRender.beep(0);
     mMemory.reset();
 }
@@ -48,7 +48,7 @@ void Chip8::Step() {
     // HiRes ML routines were at 200-248, hi-res
     // programs started at 0x260.
     if(mPC == 0x200 && inst == 0x1260) {
-        mHires = true;
+        mRender.setMode(CHIP8HI);
     }
 
     // Increment PC now, none of the instructions depend on its value. 
@@ -106,7 +106,7 @@ inline void Chip8::ret() {
 
 // 0x00FE/0x00FF - Enabled/Disable SChip8 hires mode.
 inline void Chip8::setSuperhires(bool enabled) {
-    mSuperhires = enabled;
+    mRender.setMode(enabled ? SCHIP8 : CHIP8);
 }
 
 // 0x00FD - Exit. Stops execution and triggers the halt message on the display.
@@ -270,22 +270,15 @@ void Chip8::groupGraphics(uint16_t inst) {
     // We will be shifting the data left and masking out the 8th MSB
     uint16_t mask = 0x80;
 
-    // In super chip8 mode, specifying 0 rows triggers drawing of a 16x16
-    // sprite.
-    if(rows == 0 && mSuperhires) {
+    // In super hires mode, drawing with rows == 0 triggers 16x16 sprite mode.
+    bool superSprite = rows == 0 && mRender.mode() == SCHIP8;
+
+    if(superSprite) {
        rows = 16;
-    // We will be shifting the data left and masking out the 16th MSB.
+        // We will be shifting the data left and masking out the 16th MSB.
        mask = 0x8000;
        cols = 16;
     }
-
-    // scalex and scaley indicate the number of Arduboy pixels that correspond
-    // to the S/Chip8 pixel in the current mode.
-    // Chip8 - 2x2 pixels
-    // Schipe 1x1 pixels
-    // Chip8 Hires - 2x1 pixels.
-    uint8_t scalex = mSuperhires ? 1 : 2;
-    uint8_t scaley = mSuperhires | mHires ? 1 : 2;
 
     // Clear the collision flag.
     mV[0xF] = 0;
@@ -294,7 +287,7 @@ void Chip8::groupGraphics(uint16_t inst) {
     for(int row = 0; row < rows; row++) {
         // Collect the data to draw from memory.
         uint16_t rowData;
-        if(mSuperhires && rows == 16) {
+        if(superSprite) {
             rowData = readMem(mI+row*2);
             rowData <<= 8;
             rowData |= readMem(mI+row*2+1);
@@ -304,31 +297,11 @@ void Chip8::groupGraphics(uint16_t inst) {
 
         for(int col = 0; col < cols; col++) {
             bool on = rowData&mask;
-            uint8_t py = scaley*((yc+row)%(64/scaley));
-            uint8_t px = scalex*((xc+col)%(128/scalex));
+            uint8_t px = xc + col;
+            uint8_t py = yc + row;
 
-            // Drawing in chip8 does an XOR, so we need to get the existing
-            // state.
-            bool wasOn = mRender.getPixel(px, py);
-            uint8_t newColor = wasOn ^ on;
-
-            // Set the collision flag: if it wasn't already set, we set it if
-            // drawing this pixel results in an on pixel becoming off.
-            mV[0xF] |= (wasOn & on) ? 1 : 0;
-
-            // TODO - abstract mode to renderer?
             // Draw the pixel
-            mRender.drawPixel(px,py, newColor);
-            // Draw the rest of a 2xN pixel 
-            if(!mSuperhires) {
-                // Draw the rest of a 2x1 pixel
-                mRender.drawPixel(px+1,py, newColor);
-                // Draw the rest of a 2x2 pixel
-                if(!mHires) {
-                    mRender.drawPixel(px+1,py+1, newColor);
-                    mRender.drawPixel(px,py+1, newColor);
-                }
-            }
+            mV[0xF] |= mRender.drawPixel(px,py, on);
             rowData<<=1;
 
         }

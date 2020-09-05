@@ -1,32 +1,33 @@
 #pragma once
 #include <stdint.h>
 
+enum RenderMode { CHIP8, CHIP8HI, SCHIP8 };
+
 // These methods need to be implemented to provide the drawing, sound, and
 // random functionality that the Chip8 engine needs.
 //
 // Also includes a hook for any special exit behavior.
 class Render {
-    public:
-    // return the current state of the screen memory at the given coordinate,
-    // true if on, false if off.
-    virtual bool getPixel(uint8_t x, uint8_t y) = 0;
+    protected: 
+    RenderMode mMode;
 
-    // set the screen memory at location x, y to the provided state.
-    virtual void drawPixel(uint8_t x, uint8_t y, bool on) = 0;
+    public:
+    // if it should trigger a collision, return true.
+    virtual bool drawPixel(uint8_t x, uint8_t y, bool drawVal) = 0;
+
+    // set the resolution mode
+    virtual void setMode(RenderMode mode) { mMode = mode; }
+
+    // get the resolution mode
+    virtual RenderMode mode() { return mMode; }
 
     // draw the screen
     virtual void render() = 0;
 
     // clear the screen
     virtual void clear() = 0;
-
-    // implementations should make a noise for dur/60 seconds.
-    virtual void beep(uint8_t dur) = 0;
-
-    // implementations should return a uniform random number from 0 - 0xFF
-    virtual uint8_t random() = 0;
-
     
+
     // SUPER CHIP-8
     
     // scroll the display down the specified number of lines
@@ -40,4 +41,13 @@ class Render {
 
     // implement if you want to perform custom actions when emulator exits
     virtual void exit() = 0;
-};
+
+
+    // Non-drawing rendering
+    
+    // implementations should make a noise for dur/60 seconds.
+    virtual void beep(uint8_t dur) = 0;
+
+    // implementations should return a uniform random number from 0 - 0xFF
+    virtual uint8_t random() = 0;
+};    

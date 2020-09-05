@@ -40,12 +40,6 @@ class Chip8 {
     // Stack for calls.
     uint16_t mStack[16];
 
-    // Becomes true when a Chip8 Hires program is detected.
-    bool mHires = false;
-
-    // Becomes true when Schip8 hires is enabled.
-    bool mSuperhires = false;
-
     // True while the program is executing.
     bool mRunning = false;
 
