@@ -153,3 +153,23 @@ void ArduboyRender::exit() {
 uint8_t ArduboyRender::random() {
     return ::random(0xFF);
 }
+
+// Set the keymapping that will be used by the buttons method.
+void ArduboyRender::setKeyMap(uint8_t ud, uint8_t lr, uint8_t ab) {
+    mKeymapUD = ud;
+    mKeymapLR = lr;
+    mKeymapAB = ab;
+}
+
+// Return the button state.
+uint16_t ArduboyRender::buttons() {
+    mBoy.pollButtons();
+    uint16_t buttons = 0;
+    if(mBoy.pressed(UP_BUTTON)) buttons |= (1 << (mKeymapUD >> 4));
+    if(mBoy.pressed(DOWN_BUTTON)) buttons |= (1 << (mKeymapUD & 0xF));
+    if(mBoy.pressed(LEFT_BUTTON)) buttons |= (1 << (mKeymapLR >> 4));
+    if(mBoy.pressed(RIGHT_BUTTON)) buttons |= (1 << (mKeymapLR & 0xF));
+    if(mBoy.pressed(A_BUTTON)) buttons |= (1 << (mKeymapAB >> 4));
+    if(mBoy.pressed(B_BUTTON)) buttons |= (1 << (mKeymapAB & 0xF));
+    return buttons;
+}
