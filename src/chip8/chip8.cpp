@@ -49,12 +49,16 @@ inline void Chip8::handleButtons() {
     }
 }
 
-// Read the instruction for the current value of PC.
-inline bool Chip8::readInst(uint16_t &inst) {
-    // endian fix
-    if(!mMemory.read(mPC, (uint8_t&)inst)) return false;
-    inst <<= 8;
-    if(!mMemory.read(mPC+1, (uint8_t&)inst)) return false;
+// Expose the internal readWord inline function.
+bool Chip8::ReadWord(uint16_t addr, uint16_t &result) {
+    return readWord(addr, result);
+}
+
+// Read a 16-bit word from the memory of this Chip8 emulator at the
+// specified address, handling endian byte swap.
+inline bool Chip8::readWord(uint16_t addr, uint16_t &result) {
+    if(!mMemory.read(addr, (uint8_t*)&result, 2)) return false;
+    result = (result >> 8) | (result << 8);
     return true;
 }
 
@@ -73,7 +77,7 @@ ErrorType Chip8::Step() {
     if(mAwaitingKey) return NO_ERROR;
 
     uint16_t inst;
-    if(!readInst(inst)) {
+    if(!ReadWord(mPC, inst)) {
         mRunning = false;
         return BAD_FETCH;
     }
@@ -329,17 +333,9 @@ ErrorType Chip8::groupGraphics(uint16_t inst) {
         // Collect the data to draw from memory.
         uint16_t rowData;
         if(superSprite) {
-            if(!mMemory.read(mI+row*2, reinterpret_cast<uint8_t&>(rowData))) {
-                return BAD_READ;
-            }
-            rowData <<= 8;
-            if(!mMemory.read(mI+row*2+1, reinterpret_cast<uint8_t&>(rowData))) {
-                return BAD_READ;
-            }
+            if(!ReadWord(mI+row*2, rowData)) return BAD_READ;
         } else {
-            if(!mMemory.read(mI+row, reinterpret_cast<uint8_t&>(rowData))) {
-                return BAD_READ;
-            }
+            if(!mMemory.read(mI+row, (uint8_t*)&rowData, 1)) return BAD_READ;
         }
 
         for(int col = 0; col < cols; col++) {
@@ -425,26 +421,18 @@ inline void Chip8::ldiHiFont(uint8_t from) { mI = 0x10*5 + (10 * mV[from]); }
 // 0xFX33 - Write binary coded decimal encoding of VX to memory pointed to by I.
 inline ErrorType Chip8::writeBCD(uint8_t from) {
     uint8_t val = mV[from];
-    if(!mMemory.write(mI, val/100)) return OUT_OF_MEMORY;
-    if(!mMemory.write(mI+1, (val/10)%10)) return OUT_OF_MEMORY;
-    if(!mMemory.write(mI+2, val%10)) return OUT_OF_MEMORY;
-    return NO_ERROR;
+    uint8_t vals[3] = {val/100, (val/10)%10, val%10};
+    return mMemory.write(mI, vals, 3) ? NO_ERROR : OUT_OF_MEMORY;
 }
 
 // 0xFX55 - Store V0-VX starting at I.
 inline ErrorType Chip8::strReg(uint8_t upto) {
-    for(int i = 0; i <= upto; i++) {
-        if(!mMemory.write(mI+i, mV[i])) return OUT_OF_MEMORY;
-    }
-    return NO_ERROR;
+    return mMemory.write(mI, mV, upto+1) ? NO_ERROR : OUT_OF_MEMORY;
 }
 
 // 0xFX65 - Read into V0-VX starting at I.
 inline ErrorType Chip8::ldReg(uint8_t upto) {
-    for(int i = 0; i <= upto; i++) {
-        if(!mMemory.read(mI+i, mV[i])) return BAD_READ;
-    }
-    return NO_ERROR;
+    return mMemory.read(mI, mV, upto+1) ? NO_ERROR : BAD_READ;
 }
 
 

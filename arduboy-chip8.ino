@@ -91,6 +91,10 @@ void runEmu() {
         uint16_t pc = emu.GetPC();
         boy.print(F("PC: "));
         printWord(pc);
+        boy.print(F("INST: "));
+        uint16_t inst;
+        emu.ReadWord(pc, inst);
+        printWord(inst);
     }
 
 }
