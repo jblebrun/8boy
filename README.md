@@ -42,28 +42,33 @@ The program loader makes a feeble attempt at disassembly, which it will show in 
 
 
 ## Implementation Notes
-There are a few limitations to the Arduboy that make it non-trivial to port CHIP-8 games to this platform. Here's how they've been addressed:
 
 ### Be careful about implementations!
 
 This is an old platform, which has seen many implementations, and has lots written about it. Here are some things I've noticed along the way:
 
-* Some documentation incorrectly describes the behavior of register VF during subtraction operations. Quite a few of the popular resources have this wrong, but the COSMAC VIP manual does give the correct information.
+* Some documentation incorrectly describes the behavior of register VF during subtraction operations. Quite a few of the popular resources have this wrong, but the COSMAC VIP manual does give the correct information: The VF register will be set to 1 if VX is greater than *or equal to* VY. That is, if a borrow does not occur.
 
 * In some implementations, the register load/store from memory operations leave the I register pointing to the end of memory space that was worked with. But some games don't operate correctly if this is the behavior.
 
+* Some programs have been written to expect certain quirks in behavior, so including configuration options is necessary to support all of the various programs you might find.
+
 * I was sloppy, and for a long time didn't notice that the random implementation is rand(0xFF) & value -- which leads to almost correct but subtle weird behavior in some games.
 
-* More generally: there are a lot of subtle details to get wrong, and it's easy for things to more or less seem to work correctly. Writing some functional tests for the operations probably would have saved me a lot of time debugging just to find out that a `^` should have been an `&`, or a `(a & !b)` should have been `(a & b)`. Especially in that pesky drawing routine!
+* Broadly: there are a lot of subtle details to get wrong, and it's easy for things to more or less seem to work correctly. Writing some unit tests for the operations probably would have saved me a lot of time debugging just to find out that a `^` should have been an `&`, or a `(a & !b)` should have been `(a & b)`. Especially in that pesky drawing routine!
 
-### Memory
+### ArduBoy 
+
+There are a few limitations to the Arduboy that make it non-trivial to port CHIP-8 games to this platform. This implementation includes some hacks that work for the programs I've encountered so far. 
+
+#### Memory
 
 The CHIP-8 instruction set is capable of addressing up to 4kb of memory. The Arduboy has only 2.5kb of RAM (a large chunk of which is taken up by the screen buffer!). However, all of the games I've found so far don't actively use more than a few hundred bytes of memory at runtime. Since the program data is stored in flash, we just need a solution to figure out how to satisfy memory reads and writes as the programs execute.
 
 A strategy that's been working well for every game so far is to use a "slab allocation" approach. That is, we maintain an array of 16-byte "slabs" and reserve spaces for as many of them as possible. Each slab contains 16 bytes of data, and an 8-byte "page identifier". Because the original COSMAC VIP OS was resident in pages 0 and 1, we assume that nothing will try to write there, and we use page number 0 as a "not used" marker. See the code for more details.
 
 
-### Keys
+#### Keys
 
 The CHIP-8 runs on the COSMAC VIP, with a 16-key keypad. The Arduboy has 6 keys. Conveniently, most games only use a subset of the keys. Unfortunately, the subset tends to be different for each game. So, it's necessary to figure out which keys a game needs, then a mapping file can be included in the `/rom` directory. 
 
