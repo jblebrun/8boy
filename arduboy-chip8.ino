@@ -109,6 +109,11 @@ void runLoader() {
         }
         Serial.println("");
         memory.load(code, size);
+
+        // Wait for button release before starting emulator, to avoid 
+        // the loader button press from registering in the game.
+        while(boy.pressed(A_BUTTON));
+
         emu.Reset();
     }
 }
