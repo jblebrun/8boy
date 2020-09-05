@@ -4,16 +4,14 @@
 
 #include "programs.h"
 #include "src/arduboy/render.hpp"
-#include "src/arduboy/errors.hpp"
 #include "src/arduboy/mem.hpp"
 
 
 Arduboy2 boy;
 ArduMem memory;
 
-ArduboyErrors errors(boy);
 ArduboyRender render(boy);
-Chip8 emu(render, errors, memory);
+Chip8 emu(render, memory);
 
 void setup() {
     boy.begin();
@@ -26,12 +24,39 @@ uint8_t pidx;
 const Program *program;
 bool super = false;
 
+void printWord(uint16_t w) {
+    boy.print(F("0x"));
+    if((w & 0xF000) == 0) boy.print(0);
+    if((w & 0xFF00) == 0) boy.print(0);
+    if((w & 0xFFF0) == 0) boy.print(0);
+    boy.println(w, HEX);
+}
+
 unsigned long next = 0;
 void runEmu() {
     if(boy.nextFrame()) {
         render.tick();
         emu.Tick();
     }
+
+    // If the emulator exited, we show a message that pressing a key will
+    // restart it. So, handle that here.
+    if(!emu.Running()) {
+        boy.pollButtons();
+
+        // Any key will reset
+        if(boy.justPressed(0xFF)) {
+            emu.Reset();
+        }
+
+        // Left also drops back to loader
+        if(boy.justPressed(LEFT_BUTTON)) {
+            program = NULL;
+        }
+
+        return;
+    }
+
     
     unsigned long t = micros();
     if(t < next) {
@@ -46,11 +71,28 @@ void runEmu() {
         program = NULL;
     }
 
-    bool running = emu.Step();
+    ErrorType error = emu.Step();
+    
+    if(error != NO_ERROR) {
+        boy.setCursor(0,0);
+        switch(error) {
+            case STOPPED: 
+                boy.println(F("Program Exited"));
+                boy.println(F("Left: To Loader"));
+                boy.println(F("Other: Restart"));
+                return;
+            case STACK_UNDERFLOW: boy.println(F("UNDERFLOW")); break;
+            case STACK_OVERFLOW: boy.println(F("OVERFLOW")); break;
+            case OUT_OF_MEMORY: boy.println(F("OUT OF MEM")); break;
+            case BAD_READ: boy.println(F("BAD READ")); break;
+            case BAD_FETCH: boy.println(F("BAD FETCH")); break;
+            case UNIMPLEMENTED_INSTRUCTION: boy.println(F("UNIMPL")); break;
+        }
+        uint16_t pc = emu.GetPC();
+        boy.print(F("PC: "));
+        printWord(pc);
+    }
 
-    // If the emulator exited, we show a message that pressing a key will
-    // restart it. So, handle that here.
-    if(!running & boy.justPressed(0xFF)) emu.Reset();
 }
 
 void runLoader() {

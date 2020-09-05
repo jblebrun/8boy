@@ -32,7 +32,6 @@ public:
     virtual void beep(uint8_t dur);
     virtual void render();
     virtual void clear();
-    virtual void exit();
     virtual uint8_t random();
     virtual uint16_t buttons();
 };

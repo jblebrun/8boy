@@ -7,14 +7,10 @@
 
 #include <stdint.h>
 
-
 class Chip8 {
     // Rendering implementation from platform.
     Render &mRender;
 
-    // Error handling implementation from platform.
-    Errors &mErrors;
-    
     // Memory implementation from platform.
     Memory &mMemory;
 
@@ -53,29 +49,30 @@ class Chip8 {
     // Indicates that we are paused waiting for the next keypress.
     bool mAwaitingKey = false;
     
-    // Memory helpers.
-    uint8_t readMem(uint16_t);
-    void writeMem(uint16_t, uint8_t);
-
     // read buttons and handle any updates
     inline void handleButtons();
 
     // read an instruction
-    inline uint16_t readInst();
+    inline bool readInst(uint16_t &inst);
+
+    // handle an error. 
+    void handleError(ErrorType errorType, uint16_t inst);
 
     // execute a single fetched chip8 instruction
-    void exec(uint16_t inst);
+    // If the instruction results in an error, the type will be passed via the
+    // provided errorType param.
+    ErrorType exec(uint16_t inst);
 
     // Instruction groups.
     
     // 0x0XXX - System (see submethods below).
-    inline void groupSys(uint16_t);
+    inline ErrorType groupSys(uint16_t);
 
     // 0x1nnn jump (no submethods).
     inline void groupJump(uint16_t);
     
     // 02nnn call (no submethods).
-    inline void groupCall(uint16_t);
+    inline ErrorType groupCall(uint16_t);
     
     // 0x3Xnn skip if equal immediate (no submethods).
     inline void groupSeImm(uint16_t);
@@ -93,7 +90,7 @@ class Chip8 {
     inline void groupAddImm(uint16_t);
 
     // 0x8XYx - ALU Group
-    inline void groupALU(uint16_t);
+    inline ErrorType groupALU(uint16_t);
 
     // 0x9XYx   Skip if two registers hold inequal values
     inline void groupSneReg(uint16_t);
@@ -108,23 +105,21 @@ class Chip8 {
     inline void groupRand(uint16_t);
     
     //0xDXYL   draw! If you think there's a bug in here, you're probably right.
-    inline void groupGraphics(uint16_t);
+    inline ErrorType groupGraphics(uint16_t);
 
     // 0xEX9E / 0xEXA1 - skip if key pressed/not pressed
-    inline void groupKeyboard(uint16_t);
+    inline ErrorType groupKeyboard(uint16_t);
 
     // 0xFnnn - Load to various internal registers
-    inline void groupLoad(uint16_t);
+    inline ErrorType groupLoad(uint16_t);
 
 
     // Instruction Sub-Methods
     
     // System group 0x0xxx
     // 0x00EE - Return from the most recently called subroutine.
-    inline void ret();
-    // 0x00FD - Exit. Stops execution and triggers the halt message on the
-    // display.
-    inline void exit();
+    inline ErrorType ret();
+    
     // 0x00FE/0x00FF - Enabled/Disable SChip8 hires mode.
     inline void setSuperhires(bool);
 
@@ -182,13 +177,13 @@ class Chip8 {
     inline void ldiHiFont(uint8_t);
 
     // 0xFX33 - Write binary coded decimal encoding of VX to memory pointed to by I.
-    inline void writeBCD(uint8_t);
+    inline ErrorType writeBCD(uint8_t);
 
     // 0xFX55 - Store V0-VX starting at I.
-    inline void strReg(uint8_t);
+    inline ErrorType strReg(uint8_t);
 
     // 0xFX65 - Read into V0-VX starting at I.
-    inline void ldReg(uint8_t);
+    inline ErrorType ldReg(uint8_t);
 
     // 0xFX75 - Store registers into special platform storage
     // For example, "RPL" registers that were used in the original
@@ -204,7 +199,7 @@ class Chip8 {
     public:
         // create a new Chip8 emulator with the provided renderer and memory
         // implementations.
-        Chip8(Render &render, Errors &errors, Memory &memory);
+        Chip8(Render &render, Memory &memory);
 
         // Reset all registers and flags for the emulator instance, clear the memory,
         // and begin running.
@@ -212,8 +207,9 @@ class Chip8 {
 
         // Read and execute one Chip8 operation. Instructions will be read from memory
         // using the provided memory implementation.
-        // Returns false if emulator is no longer running and needs a Reset.
-        bool Step();
+        // Returns ErrorType, which includes information about running the instruction, like
+        // whether it resulted in an error or a halt.
+        ErrorType Step();
 
         // Accept a bitmask of buttons that are pressed. The value will update the
         // internal button state of the emulator. If the emulator is waiting for a
@@ -230,4 +226,5 @@ class Chip8 {
        // if the emulator is stopped, start it, and vice-versa
        void Toggle() { mRunning = !mRunning; };
 
+       uint16_t GetPC();
 };
