@@ -204,28 +204,33 @@ inline void Chip8::aluAdd(uint8_t x, uint8_t y) {
 inline void Chip8::aluSub(uint8_t x, uint8_t y) { 
     // NOTE: some references indicate that VF = 1 if X > y. But it's X >= Y.
     // That is, VF = 1 if subtraction did not result in a borrow.
+    uint8_t vf = mV[x] >= mV[y]; 
     mV[x] = mV[x] - mV[y];
-    mV[0xF] = mV[x] >= mV[y]; 
+    mV[0xF] = vf;
 }
 
 // 0x8XY6   VX = VX SHR VY, VF = bit shifted out
 inline void Chip8::aluShr(uint8_t x, uint8_t y) { 
+    // Capture vf, but set actual VF register last.
+    uint8_t vf = mV[x]&0x01 ? 1 : 0;
     mV[x] = mV[x] >> 1;
-    mV[0xF] = mV[x]&0x01 ? 1 : 0;
+    mV[0xF] = vf; 
 }
 
 // 0x8XY7   VX = VY - VX, VF = 1 if borrow did not occur
 inline void Chip8::aluSubn(uint8_t x, uint8_t y) { 
     // NOTE: some references indicate that VF = 1 if X > y. But it's X >= Y.
     // That is, VF = 1 if subtraction did not result in a borrow.
+    uint8_t vf = mV[y] >= mV[x]; 
     mV[x] = mV[y] - mV[x];
-    mV[0xF] = mV[y] >= mV[x]; 
+    mV[0xF] = vf;
 }
 
 // 0x8XY8   VX = VX SHL VY, VF = bit shifted out
 inline void Chip8::aluShl(uint8_t x, uint8_t y) { 
+    uint8_t vf = mV[x]&0x80 ? 1 : 0;
     mV[x] = mV[x] << 1;
-    mV[0xF] = mV[x]&0x80 ? 1 : 0;
+    mV[0xF] = vf;
 }
 
 
