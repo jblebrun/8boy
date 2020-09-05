@@ -25,7 +25,6 @@ void setup() {
 uint8_t pidx;
 const Program *program;
 bool super = false;
-uint8_t keymap[3] = {0x12, 0x3C, 0xAB};
 
 unsigned long next = 0;
 void runEmu() {
@@ -47,22 +46,11 @@ void runEmu() {
         program = NULL;
     }
 
+    bool running = emu.Step();
 
-    boy.pollButtons();
-    uint16_t buttons = 0;
-    if(boy.pressed(UP_BUTTON)) buttons |= (1 << (keymap[0] >> 4));
-    if(boy.pressed(DOWN_BUTTON)) buttons |= (1 << (keymap[0] & 0xF));
-    if(boy.pressed(LEFT_BUTTON)) buttons |= (1 << (keymap[1] >> 4));
-    if(boy.pressed(RIGHT_BUTTON)) buttons |= (1 << (keymap[1] & 0xF));
-    if(boy.pressed(A_BUTTON)) buttons |= (1 << (keymap[2] >> 4));
-    if(boy.pressed(B_BUTTON)) buttons |= (1 << (keymap[2] & 0xF));
-
-    emu.Buttons(buttons);
-    if(emu.Running()) {
-        emu.Step();
-    } else if(boy.justPressed(A_BUTTON)) {
-        emu.Reset();
-    }
+    // If the emulator exited, we show a message that pressing a key will
+    // restart it. So, handle that here.
+    if(!running & boy.justPressed(0xFF)) emu.Reset();
 }
 
 void runLoader() {
@@ -102,12 +90,11 @@ void runLoader() {
         program = &programs[pidx];
         uint16_t size = pgm_read_word(&(program->size));
         const uint8_t* code = pgm_read_ptr(&(program->code));
-        for(int i = 0; i < 3; i++) {
-            keymap[i] = pgm_read_byte(&(program->keymap[i]));
-            Serial.print(keymap[i], HEX);
-            Serial.print("   ");
-        }
-        Serial.println("");
+        render.setKeyMap(
+            pgm_read_byte(&(program->keymap[0])),
+            pgm_read_byte(&(program->keymap[1])),
+            pgm_read_byte(&(program->keymap[2]))
+        );
         memory.load(code, size);
 
         // Wait for button release before starting emulator, to avoid 

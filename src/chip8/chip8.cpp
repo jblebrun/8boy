@@ -24,25 +24,51 @@ void Chip8::Tick() {
         mDT--;
     }
 }
-    
-// Accept a bitmask of buttons that are pressed. The value will update the
-// internal button state of the emulator. If the emulator is waiting for a
-// keypress, that state will be detected here, and execution will continue.
-void Chip8::Buttons(uint16_t buttons) {
-    mButtons = buttons;
-    if (mWaitKey && buttons) {
-        mWaitKey = false;
-        mRunning = true;
+
+// Read the button state from the platform provider.
+// If The emulator isn't running because it's waiting for a key, if the key is
+// now pressed, it will be stored in the provided register.
+inline void Chip8::handleButtons() {
+    // Get platform buttons into the emulator state.
+    mButtons = mRender.buttons();
+
+    // Handle the 0xFX0A (waitKey) instruction if needed.
+    if (mAwaitingKey && mButtons)  {
+        // Find the first pressed button, lower hex value gets priority.
+        uint8_t pressed = 0;
+        while((mButtons & 0x01) == 0) {
+            mButtons >>= 1;
+            pressed++;
+        }
+
+        // Place the pressed button into the destinstaion resgister and
+        // reset waiting flag.
+        mV[mWaitKeyDest] = pressed;
+        mAwaitingKey = false;
     }
+}
+
+// Read the instruction for the current value of PC.
+inline uint16_t Chip8::readInst() {
+    // endian fix
+    uint8_t hi = readMem(mPC);
+    uint8_t lo = readMem(mPC+1);
+    return (uint16_t(hi << 8) | lo) ;
 }
 
 // Read and execute one Chip8 operation. Instructions will be read from memory
 // using the provided memory implementation.
-void Chip8::Step() {
-    // endian fix
-    uint8_t hi = readMem(mPC);
-    uint8_t lo = readMem(mPC+1);
-    uint16_t inst = (uint16_t(hi << 8) | lo) ;
+bool Chip8::Step() {
+    handleButtons();
+
+    // Let the caller know that we're not running.
+    if(!mRunning) return false;
+
+    // We won't run any instructions while awaiting keys, but still considered
+    // in the running state.
+    if(mAwaitingKey) return true;
+
+    uint16_t inst = readInst();
 
     // Hack for handling original 64x64 Hi-Res mode
     // HiRes ML routines were at 200-248, hi-res
@@ -53,7 +79,11 @@ void Chip8::Step() {
 
     // Increment PC now, none of the instructions depend on its value. 
     mPC+=2;
+    exec(inst);
+    return true;
+}
 
+inline void Chip8::exec(uint16_t inst) {
     // Dispatch to the instruction group based on the top nybble.
     switch (inst >> 12) {
         case 0x0: return groupSys(inst);
@@ -233,7 +263,6 @@ inline void Chip8::aluShl(uint8_t x, uint8_t y) {
     mV[0xF] = vf;
 }
 
-
 // 0x9XYx   Skip if two registers hold inequal values
 void Chip8::groupSneReg(uint16_t inst) {
     if(mV[x(inst)] != mV[y(inst)]) {
@@ -353,8 +382,8 @@ inline void Chip8::readDT(uint8_t into) { mV[into] = mDT; }
 
 // 0xFX0A - Pause execution until a key is pressed.
 inline void Chip8::waitK(uint8_t into) {
-    mRunning = false;
-    mWaitKey = true;
+    mAwaitingKey = true;
+    mWaitKeyDest = into;
 }
 
 // 0xFX15 - Set the delay timer to value in VX.

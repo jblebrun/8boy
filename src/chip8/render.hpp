@@ -50,4 +50,8 @@ class Render {
 
     // implementations should return a uniform random number from 0 - 0xFF
     virtual uint8_t random() = 0;
+
+    // return the button state. Should return a bitmask for the buttons that have 
+    // been pressed, in little-endian order for 0-F.
+    virtual uint16_t buttons() = 0;
 };    

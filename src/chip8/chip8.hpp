@@ -46,13 +46,25 @@ class Chip8 {
     // Last button mask received from the platform.
     uint16_t mButtons = 0;
 
-    // Becomes true if execution is halted while waiting for a key press.
-    bool mWaitKey;
+    // If mAwaitingKey is true, this holds the target register to store the
+    // next keypress.
+    uint8_t mWaitKeyDest = 0;
+
+    // Indicates that we are paused waiting for the next keypress.
+    bool mAwaitingKey = false;
     
     // Memory helpers.
     uint8_t readMem(uint16_t);
     void writeMem(uint16_t, uint8_t);
 
+    // read buttons and handle any updates
+    inline void handleButtons();
+
+    // read an instruction
+    inline uint16_t readInst();
+
+    // execute a single fetched chip8 instruction
+    void exec(uint16_t inst);
 
     // Instruction groups.
     
@@ -200,7 +212,8 @@ class Chip8 {
 
         // Read and execute one Chip8 operation. Instructions will be read from memory
         // using the provided memory implementation.
-        void Step();
+        // Returns false if emulator is no longer running and needs a Reset.
+        bool Step();
 
         // Accept a bitmask of buttons that are pressed. The value will update the
         // internal button state of the emulator. If the emulator is waiting for a
