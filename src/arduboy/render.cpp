@@ -129,7 +129,7 @@ void ArduboyRender::beep(uint8_t dur) {
     if(dur == 0) {
         beepPin.noTone();
     } else {
-        beepPin.tone(beepPin.freq(1200), dur/6);
+        beepPin.tone(beepPin.freq(800), dur);
     }
 }
 

@@ -361,8 +361,8 @@ inline void Chip8::waitK(uint8_t into) {
 inline void Chip8::setDT(uint8_t from) { mDT = mV[from]; }
 
 // 0xFX18 - Beep for the duration in VX.
-inline void Chip8::makeBeep(uint16_t dur) { 
-    mRender.beep(dur);
+inline void Chip8::makeBeep(uint16_t durReg) { 
+    mRender.beep(mV[durReg]);
 }
 
 // 0xFX1E - Add VX to I
