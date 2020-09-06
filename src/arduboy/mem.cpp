@@ -49,6 +49,20 @@ void ArduMem::reset() {
     }
 }
 
+// Initialize a new slab for the provided address. 
+// Sets the slab page number, initializes it to 0, and then
+// tries to read in a PROGMEM value. If that fails, the value is
+// set to 0.
+void ArduMem::initSlab(Slab &slab, uint16_t addr) {
+    slab.page = addr >> 4;
+    uint16_t pageStart = addr & 0xFF0;
+    for(uint16_t i = 0; i < 16; i++) {
+        if(!pgmRead(pageStart + i, &slab.data[i], 1)) {
+            slab.data[i] = 0;
+        }
+    }
+}
+
 // Try to find an already-allocated slab for the provided address.
 // This works by searching through the current list of slabs for as
 // long as we see slabs with a page identifier != 0.
@@ -56,47 +70,97 @@ void ArduMem::reset() {
 // If we reach an unused slab, we return that, the caller can decide
 // to allocate it if desired.
 // If the end of the list is reached with no match, NULL is returned.
-Slab* ArduMem::findSlab(uint16_t addr) {
+Slab* ArduMem::findWriteSlab(uint16_t addr) {
     uint8_t page = addr >> 4;
     for(uint8_t i = 0; i < SLAB_COUNT; i++) {
-        if(mSlabs[i].page == page || mSlabs[i].page == 0) {
-            return &mSlabs[i];
-        }
+        if(mSlabs[i].page == 0) initSlab(mSlabs[i], addr);
+        if(mSlabs[i].page == page) return &mSlabs[i];
     }
     return NULL;
 }
 
-// readMem tries to read memory from the right place
-// for the specified address.
-// (1) look for an allocated slab, and uses that.
-// (2) if the address in the low space, assume it's for a font, use that.
-// (3) If the adddress is in the program space, read from the program in flash.
-// (4) Uh - oh, something wasn't considered. Halt and show a message.
-// If true is returned, the val reference passed in will hold the result.
-// If false is returned, the read was bad.
-bool ArduMem::read(uint16_t addr, uint8_t &val) {
-    Slab* slab = findSlab(addr);
-    if(slab && slab->page != 0) {
-        val = slab->data[addr&0xF];
-        return true;
+// Returns the first slab that would be needed for a read of the requested
+// size, starting from addr.
+// If no slab covers the requested range, NULL is returned.
+Slab* ArduMem::firstReadSlab(uint16_t addr, uint8_t size) {
+    uint8_t minPage = addr >> 4;
+    uint8_t maxPage = (addr+size) >> 4;
+    Slab* found = NULL;
+    for(uint8_t i = 0; i < SLAB_COUNT && mSlabs[i].page != 0; i++) {
+        Slab &slab = mSlabs[i];
+        if (slab.page >= minPage && slab.page <= maxPage) {
+            if(found == NULL || slab.page < found->page) {
+              found = &mSlabs[i];
+            }
+        }
     }
+    return found;
+}
 
-    if(addr < sizeof(font)) {
-        val = pgm_read_byte(&font[addr]);
-        return true;
-    }
 
-    if(addr < (sizeof(font) + sizeof(fonthi))) {
-        val = pgm_read_byte(&fonthi[addr-0x50]);
-        return true;
-    }
+// Read data that's fully inside PROGMEM arrays.
+// Returns false if you request something that's actually *not* fully inside
+// PROGMEM.
+bool ArduMem::pgmRead(uint16_t addr, uint8_t *dest, uint8_t size) {
+    uint8_t *src = NULL;
 
-    if(addr < mProgramSize) {
-        val = pgm_read_byte(&mProgram[addr-0x200]);
-        return true;
+    if(addr + size < sizeof(font)) {
+        // Fully in font space, read font. 
+        src = &font[addr];
+    } else if(addr < sizeof(font) + sizeof(fonthi)) {
+        // Fully in fonthi space, read fonthi.
+        src = &fonthi[addr - sizeof(font)];
+    } else if(addr >= 0x200 & addr + size - 0x200 < mProgramSize) {
+        // Fully in program space, read program.
+        src = &mProgram[addr-0x0200];
     } 
 
-    return false;
+    if(!src) return false;
+
+    memcpy_P(dest, src, size);
+    return true;
+}
+
+// Read some bytes from memory.
+// addr, dest, and size parameters are updated as function progresses
+// to track progress.
+// This function should handle ranges that are covered by a mixture of slabs
+// and pgm.
+bool ArduMem::read(uint16_t addr, uint8_t* dest, uint8_t size) {
+    if(size == 0) return true;
+
+    Slab* slab = NULL;
+
+    // In this loop, we repeat the following:
+    // 1. Find the earliest-in-memory slab covering the current range.
+    // 2. If the slab isn't at the beginning, copy any program data that's before it.
+    // 3. Copy the slab data up to the end of this slab.
+    do {
+        slab = firstReadSlab(addr, size);
+        if(slab) {
+            // Copy any pgm data up to slab start.
+            if(addr < slab->page * 16) {
+                uint8_t pgmToRead = (slab->page * 16) - addr;
+                if(!pgmRead(addr, dest, pgmToRead)) return false;
+                addr += pgmToRead;
+                dest += pgmToRead;
+                size -= pgmToRead;
+            }
+            
+            // Copy slab data
+            uint8_t slabToRead = 16 - (addr & 0xF);
+            if(slabToRead > size) slabToRead = size;
+            memcpy(dest, &(slab->data[addr & 0xF]), slabToRead);
+            addr += slabToRead;
+            dest += slabToRead;
+            size -= slabToRead;
+        }
+    } while(size > 0 && slab);
+
+    
+    // After the final slab is handled, this handles any remaining pgm data that
+    // may need to be written.
+    return pgmRead(addr, dest, size);
 }
 
 // writeMem finds or allocates a slab of memory and
@@ -108,26 +172,19 @@ bool ArduMem::read(uint16_t addr, uint8_t &val) {
 // page for the requested address. 
 // If the page overlaps with any program memory, the program
 // memory is copied into the slab.
-bool ArduMem::write(uint16_t addr, uint8_t val) {
-    Slab *slab = findSlab(addr);
-    if(!slab) {
-        return false;
-    }
+bool ArduMem::write(uint16_t addr, uint8_t* src, uint8_t size) {
+    do {
+        // Find or initialize the next slab to write to.
+        Slab *slab = findWriteSlab(addr);
+        if(!slab) return false;
 
-    // If slab is new, set it up
-    if(slab->page == 0) {
-        slab->page = addr >> 4;
-        uint16_t pageStart = addr & 0xFF0;
-        for(uint8_t i = 0; i < 16; i++) {
-            // Initialize the slab to either 0, or the corresopnding program memory
-            if(pageStart + i < mProgramSize) {
-                slab->data[i] = pgm_read_byte(&mProgram[(pageStart|i)-0x200]);
-            } else {
-                slab->data[i] = 0;
-            }
-        }
-    }
-
-    slab->data[addr&0xF] = val;
+        // Write as much into the slab.
+        uint8_t slabToWrite = 16 - (addr & 0xF);
+        if(slabToWrite > size) slabToWrite = size;
+        memcpy(&(slab->data[addr & 0xF]), src, slabToWrite);
+        addr += slabToWrite;
+        src += slabToWrite;
+        size -= slabToWrite;
+    } while(size > 0);
     return true;
 }

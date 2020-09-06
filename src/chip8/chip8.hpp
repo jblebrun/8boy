@@ -52,11 +52,10 @@ class Chip8 {
     // read buttons and handle any updates
     inline void handleButtons();
 
-    // read an instruction
-    inline bool readInst(uint16_t &inst);
-
     // handle an error. 
     void handleError(ErrorType errorType, uint16_t inst);
+
+    inline bool readWord(uint16_t addr, uint16_t &result);
 
     // execute a single fetched chip8 instruction
     // If the instruction results in an error, the type will be passed via the
@@ -226,5 +225,12 @@ class Chip8 {
        // if the emulator is stopped, start it, and vice-versa
        void Toggle() { mRunning = !mRunning; };
 
+       // Get the current PC. If the emulator is halted, this will be the last 
+       // instruction for which execution was attempted, whether it was successful
+       // or not.
        uint16_t GetPC();
+
+       // Read a 16-bit word from the memory of this Chip8 emulator at the
+       // specified address, handling endian byte swap.
+       bool ReadWord(uint16_t addr, uint16_t &result);
 };
