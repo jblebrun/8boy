@@ -1,7 +1,7 @@
 package main
 
 import (
-	"encoding/binary"
+	"bufio"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -129,6 +129,43 @@ func disasm(inst uint16) string {
 	return ""
 }
 
+func emitgroup(instrs []uint8) {
+	fmt.Printf("    ")
+	for i := 0; i < len(instrs); i++ {
+		fmt.Printf("0x%02X, ", instrs[i])
+	}
+	fmt.Println("")
+}
+
+func readgroup(f *bufio.Reader, pc *int, instrs []uint8) error {
+	// Emit up to 8 at a time.
+	for i := 0; i < 16; i += 2 {
+		n, err := io.ReadFull(f, instrs[i:i+2])
+		if err != nil {
+			if err == io.EOF || err == io.ErrUnexpectedEOF {
+				// emit the rest
+				emitgroup(instrs[:i+n])
+				return err
+			} else {
+				return err
+			}
+		}
+
+		inst16 := uint16(instrs[i+1])
+		inst16 |= uint16(instrs[i]) << 8
+
+		instOff := uint16(instrs[i+1]) << 8
+		peek, err := f.Peek(1)
+		if err == nil && len(peek) > 0 {
+			instOff |= uint16(peek[0])
+		}
+		fmt.Printf("    //0x%04X: %-20s |         0x%04X: %s\n", *pc, disasm(inst16), *pc+1, disasm(instOff))
+		*pc += 2
+	}
+	emitgroup(instrs[:16])
+	return nil
+}
+
 func dump(dir, filename, codename string) (int, error) {
 	fmt.Printf("const uint8_t %s[] PROGMEM = {\n", codename)
 	defer fmt.Println("};\n\n")
@@ -136,23 +173,23 @@ func dump(dir, filename, codename string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	defer f.Close()
+
+	r := bufio.NewReader(f)
 
 	pc := 0x200
 	for {
-		var inst [2]byte
-		if err := binary.Read(f, binary.BigEndian, &inst); err != nil {
-			if err == io.EOF {
-				break
-			} else if err == io.ErrUnexpectedEOF {
-			} else {
-				return 0, err
-			}
+		instrs := make([]uint8, 16)
+		err := readgroup(r, &pc, instrs)
+		if err == io.EOF {
+			return pc, nil
 		}
-		fmt.Printf("    0x%02X, 0x%02X,   //0x%04X ", inst[0], inst[1], pc)
-		inst16 := uint16(inst[1])
-		inst16 |= uint16(inst[0]) << 8
-		fmt.Println(disasm(inst16))
-		pc += 2
+		if err == io.ErrUnexpectedEOF {
+			return pc, nil
+		}
+		if err != nil {
+			return 0, err
+		}
 	}
 	return pc, nil
 }
