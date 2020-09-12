@@ -4,17 +4,20 @@
 #include "memory.hpp"
 #include "errors.hpp"
 #include "chip8-reg.hpp"
-#include "state.hpp"
+#include "tracer.hpp"
 
 #include <stdint.h>
 
 
 class Chip8 {
     // Rendering implementation from platform.
-    Render &mRender;
+    Render const &mRender;
 
     // Memory implementation from platform.
-    Memory &mMemory;
+    Memory const &mMemory;
+
+    // Tracer implementation.
+    Tracer const &mTracer;
 
     EmuState mState;
     
@@ -167,7 +170,7 @@ class Chip8 {
     public:
         // create a new Chip8 emulator with the provided renderer and memory
         // implementations.
-        Chip8(Render &render, Memory &memory);
+        Chip8(Render &render, Memory &memory, Tracer &tracer);
 
         // Reset all registers and flags for the emulator instance, clear the memory,
         // and begin running.

@@ -2,7 +2,13 @@
 #include "render.hpp"
 #include "string.h"
 
-Chip8::Chip8(Render &render, Memory &mem) : mRender(render), mMemory(mem) { }
+#include <Arduino.h>
+
+Chip8::Chip8(
+    Render &render, 
+    Memory &mem, 
+    Tracer &tracer
+) : mRender(render), mMemory(mem), mTracer(tracer) { }
 
 // Reset all registers and flags for the emulator instance, clear the memory, and begin running.
 void Chip8::Reset() {
@@ -88,11 +94,14 @@ ErrorType Chip8::Step() {
     ErrorType error = exec(mState.Instruction);
     if(error != NO_ERROR) {
         mState.Running = false;
+        mTracer.error(error, mState);
     }
     return error;
 }
 
 inline ErrorType Chip8::exec(uint16_t inst) {
+    mTracer.exec(mState);
+
     // Dispatch to the instruction group based on the top nybble.
     switch (inst >> 12) {
         case 0x0: return groupSys(inst);

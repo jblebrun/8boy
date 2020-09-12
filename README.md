@@ -82,3 +82,11 @@ For example, if the map file contains the text: `0x28, 0x46, 0xAB` then:
 * A -> keypad key A
 * B -> keypad key B
 
+
+## Debugging
+
+An instruction tracer and error dumper is included. It's not on by default. If
+you want to dump instructions, you can either use re-compile the program with
+`SerialTracer(true)` and then use `cat` to print serial messages, or use a
+two-way terminal (`picocom` is a nice option), connect to the port, and press
+any key to toggle instruction tracing.

@@ -10,12 +10,16 @@ void PrintHelper::handleCommand(Format f, va_list *src) {
     switch(f) {
         // Have to use int, not uint8_t/uint16_t, because va_list 
         // undergoes default argument promotion.
-        case X8: handleX<int>(2, src); break;
-        case X12: handleX<int>(3, src); break;
-        case X16: handleX<int>(4, src); break;
+        case D8: handleX<int>(2, src, DEC); break;
+        case D12: handleX<int>(3, src, DEC); break;
+        case D16: handleX<int>(4, src, DEC); break;
+        case X8: handleX<int>(2, src, HEX); break;
+        case X12: handleX<int>(3, src, HEX); break;
+        case X16: handleX<int>(4, src, HEX); break;
         case FS: handlePrint<__FlashStringHelper*>(src); break;
-        case AX8: handleArray<uint8_t*>(2, src); break;
-        case AX12: handleArray<uint16_t*>(3, src); break;
+        case AX8: handleArray<uint8_t*>(2, src, HEX); break;
+        case AX12: handleArray<uint16_t*>(3, src, HEX); break;
+        case AX16: handleArray<uint16_t*>(4, src, HEX); break;
     }
 }
 
@@ -31,24 +35,24 @@ void PrintHelper::printfs(Format f, ...) {
 }
 
 template<typename T>
-void PrintHelper::printPadded(T w, uint8_t nybbles) {
+void PrintHelper::printPadded(T w, uint8_t nybbles, int fmt=HEX) {
     for(int i = nybbles - 1; i >= 0; i--) {
-        mPrint.print((w >> i*4) & 0xF, HEX);
+        mPrint.print((w >> i*4) & 0xF, fmt);
     }
 }
 
 template<typename T>
-void PrintHelper::printArray(T a, int size, uint8_t nybbles) {
+void PrintHelper::printArray(T a, int size, uint8_t nybbles, int fmt=HEX) {
     for(int i = 0; i < size; i++) {
-        printPadded(a[i], nybbles);
+        printPadded(a[i], nybbles, fmt);
         space();
     }
 }
 
 template<typename T>
-void PrintHelper::handleX(uint8_t nybbles, va_list *src) {
+void PrintHelper::handleX(uint8_t nybbles, va_list *src, int fmt=HEX) {
     T n = va_arg(*src, int);
-    printPadded(n, nybbles);
+    printPadded(n, nybbles, fmt);
 }
 
 template<typename T>
@@ -58,8 +62,8 @@ void PrintHelper::handlePrint(va_list *src) {
 }
 
 template<typename T>
-void PrintHelper::handleArray(uint8_t nybbles, va_list *src) {
+void PrintHelper::handleArray(uint8_t nybbles, va_list *src, int fmt=HEX) {
     T a = va_arg(*src, T);
     int count = va_arg(*src, int);
-    printArray(a, count, nybbles);
+    printArray(a, count, nybbles, fmt);
 }
