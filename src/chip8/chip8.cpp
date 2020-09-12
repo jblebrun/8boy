@@ -6,11 +6,8 @@ Chip8::Chip8(Render &render, Memory &mem) : mRender(render), mMemory(mem) { }
 
 // Reset all registers and flags for the emulator instance, clear the memory, and begin running.
 void Chip8::Reset() {
-    mPC = 0x200;
-    mI = 0;
-    mDT = 0;
-    mSP = 0;
-    mRunning = true;
+    mState = EmuState();
+    mState.Running = true;
     mRender.clear();
     mRender.setMode(CHIP8);
     mRender.beep(0);
@@ -21,8 +18,8 @@ void Chip8::Reset() {
 // namely, beep timer and delay timer, and triggers screen draw.
 void Chip8::Tick() {
     mRender.render();
-    if(mDT > 0) {
-        mDT--;
+    if(mState.DelayTimer > 0) {
+        mState.DelayTimer--;
     }
 }
 
@@ -31,21 +28,21 @@ void Chip8::Tick() {
 // now pressed, it will be stored in the provided register.
 inline void Chip8::handleButtons() {
     // Get platform buttons into the emulator state.
-    mButtons = mRender.buttons();
+    mState.Buttons = mRender.buttons();
 
     // Handle the 0xFX0A (waitKey) instruction if needed.
-    if (mAwaitingKey && mButtons)  {
+    if (mState.AwaitingKey && mState.Buttons)  {
         // Find the first pressed button, lower hex value gets priority.
         uint8_t pressed = 0;
-        while((mButtons & 0x01) == 0) {
-            mButtons >>= 1;
+        while((mState.Buttons & 0x01) == 0) {
+            mState.Buttons >>= 1;
             pressed++;
         }
 
         // Place the pressed button into the destinstaion resgister and
         // reset waiting flag.
-        mV[mWaitKeyDest] = pressed;
-        mAwaitingKey = false;
+        mState.V[mState.WaitKeyDest] = pressed;
+        mState.AwaitingKey = false;
     }
 }
 
@@ -70,33 +67,29 @@ ErrorType Chip8::Step() {
     handleButtons();
 
     // Let the caller know that we're not running.
-    if(!mRunning) return STOPPED;
+    if(!mState.Running) return STOPPED;
 
     // We won't run any instructions while awaiting keys, but still considered
     // in the running state.
-    if(mAwaitingKey) return NO_ERROR;
+    if(mState.AwaitingKey) return NO_ERROR;
 
-    uint16_t inst;
-    if(!ReadWord(mPC, inst)) {
-        mRunning = false;
+    mState.PC = mState.NextPC;
+
+    if(!ReadWord(mState.PC, mState.Instruction)) {
+        mState.Running = false;
         return BAD_FETCH;
     }
 
     // Increment PC now, none of the instructions depend on its value. 
     // This way, we don't need to keep track of whether or not the 
     // instruction resulted in a jump.
-    mPC+=2;
+    mState.NextPC += 2;
 
-    ErrorType error = exec(inst);
+    ErrorType error = exec(mState.Instruction);
     if(error != NO_ERROR) {
-        mPC -= 2;
-        mRunning = false;
+        mState.Running = false;
     }
     return error;
-}
-
-uint16_t Chip8::GetPC() {
-    return mPC;
 }
 
 inline ErrorType Chip8::exec(uint16_t inst) {
@@ -131,7 +124,7 @@ inline ErrorType Chip8::groupSys(uint16_t inst) {
             case 0x00EE: return ret();
             case 0x00FB: mRender.scrollRight(); break; // SCHIP8
             case 0x00FC: mRender.scrollLeft(); break;  // SCHIP8
-            case 0x00FD: mRunning = false; return STOPPED;
+            case 0x00FD: mState.Running = false; return STOPPED;
             case 0x00FE: setSuperhires(false); break;
             case 0x00FF: setSuperhires(true); break;
             case 0x0230: mRender.clear(); break; // Hi-Res variant
@@ -143,11 +136,11 @@ inline ErrorType Chip8::groupSys(uint16_t inst) {
 
 // 0x00EE - Return from the most recently called subroutine.
 inline ErrorType Chip8::ret() {
-    if(mSP == 0) {
+    if(mState.StackPointer == 0) {
         return STACK_UNDERFLOW;
     }
-    mSP--;
-    mPC = mStack[mSP];
+    mState.StackPointer--;
+    mState.NextPC = mState.Stack[mState.StackPointer];
     return NO_ERROR;
 }
 
@@ -161,53 +154,52 @@ inline void Chip8::groupJump(uint16_t inst) {
     // Hack for handling original 64x64 Hi-Res mode
     // HiRes ML routines were at 200-248, hi-res
     // programs started at 0x260.
-    // mPC was already incremented so will be 0x202
-    if(mPC == 0x202 && inst == 0x1260) {
+    if(mState.PC == 0x200 && inst == 0x1260) {
         mRender.setMode(CHIP8HI);
     }
-    mPC = imm12(inst);
+    mState.NextPC = imm12(inst);
 }
 
 // 02nnn call
 inline ErrorType Chip8::groupCall(uint16_t inst) {
     // What does original interpreter do?
-    if(mSP >= 16) {
+    if(mState.StackPointer >= 16) {
         return STACK_OVERFLOW;
     }
-    mStack[mSP++] = mPC;
-    mPC = imm12(inst);
+    mState.Stack[mState.StackPointer++] = mState.NextPC;
+    mState.NextPC = imm12(inst);
     return NO_ERROR;
 }
 
 // 0x3Xnn skip if equal immediate
 inline void Chip8::groupSeImm(uint16_t inst) {
-    if(mV[x(inst)] == imm8(inst)) {
-        mPC+=2;
+    if(mState.V[x(inst)] == imm8(inst)) {
+        mState.NextPC+=2;
     }
 }
 
 // 0x4Xnn skip if not equal immediate
 inline void Chip8::groupSneImm(uint16_t inst) {
-    if(mV[x(inst)] != imm8(inst)) {
-        mPC+=2;
+    if(mState.V[x(inst)] != imm8(inst)) {
+        mState.NextPC+=2;
     }
 }
 
 // 0x5XY0 skip if two registers hold equal values
 inline void Chip8::groupSeReg(uint16_t inst) {
-    if(mV[x(inst)] == mV[y(inst)]) {
-        mPC+=2;
+    if(mState.V[x(inst)] == mState.V[y(inst)]) {
+        mState.NextPC+=2;
     }
 }
 
 // 0x6Xnn - Load immediate
 inline void Chip8::groupLdImm(uint16_t inst) {
-    mV[x(inst)] = (uint8_t)inst;
+    mState.V[x(inst)] = (uint8_t)inst;
 }
 
 // 0x7Xnn - add immediate
 inline void Chip8::groupAddImm(uint16_t inst) {
-    mV[x(inst)] += imm8(inst);
+    mState.V[x(inst)] += imm8(inst);
     // no VF carry indication? The documentation doesn't specify any.
 }
 
@@ -229,77 +221,77 @@ ErrorType Chip8::groupALU(uint16_t inst) {
 }
 
 // 0x8XY0   VX = Vy
-inline void Chip8::aluLd(uint8_t x, uint8_t y) { mV[x] = mV[y]; }
+inline void Chip8::aluLd(uint8_t x, uint8_t y) { mState.V[x] = mState.V[y]; }
 
 // 0x8XY1   VX = VX OR VY
-inline void Chip8::aluOr(uint8_t x, uint8_t y) { mV[x] = mV[x] | mV[y]; }
+inline void Chip8::aluOr(uint8_t x, uint8_t y) { mState.V[x] = mState.V[x] | mState.V[y]; }
 
 // 0x8XY2   VX = VX AND XY
-inline void Chip8::aluAnd(uint8_t x, uint8_t y) { mV[x] = mV[x] & mV[y]; }
+inline void Chip8::aluAnd(uint8_t x, uint8_t y) { mState.V[x] = mState.V[x] & mState.V[y]; }
 
 // 0x8XY3   VX = VX XOR XY
-inline void Chip8::aluXor(uint8_t x, uint8_t y) { mV[x] = mV[x] ^ mV[y]; }
+inline void Chip8::aluXor(uint8_t x, uint8_t y) { mState.V[x] = mState.V[x] ^ mState.V[y]; }
 
 // 0x8XY4   VX = VX + VY, VF = carry
 inline void Chip8::aluAdd(uint8_t x, uint8_t y) { 
-    uint16_t result_carry = mV[x] + mV[y];
-    mV[x] = mV[x] + mV[y]; 
-    mV[0xF] = result_carry > 0x00FF ? 1 : 0;
+    uint16_t result_carry = mState.V[x] + mState.V[y];
+    mState.V[x] = mState.V[x] + mState.V[y]; 
+    mState.V[0xF] = result_carry > 0x00FF ? 1 : 0;
 }
 
 // 0x8XY5   VX = VX - VY, VF = 1 if borrow did not occur
 inline void Chip8::aluSub(uint8_t x, uint8_t y) { 
     // NOTE: some references indicate that VF = 1 if X > y. But it's X >= Y.
     // That is, VF = 1 if subtraction did not result in a borrow.
-    uint8_t vf = mV[x] >= mV[y]; 
-    mV[x] = mV[x] - mV[y];
-    mV[0xF] = vf;
+    uint8_t vf = mState.V[x] >= mState.V[y]; 
+    mState.V[x] = mState.V[x] - mState.V[y];
+    mState.V[0xF] = vf;
 }
 
 // 0x8XY6   VX = VX SHR VY, VF = bit shifted out
 inline void Chip8::aluShr(uint8_t x, uint8_t y) { 
     // Capture vf, but set actual VF register last.
-    uint8_t vf = mV[x]&0x01 ? 1 : 0;
-    mV[x] = mV[x] >> 1;
-    mV[0xF] = vf; 
+    uint8_t vf = mState.V[x]&0x01 ? 1 : 0;
+    mState.V[x] = mState.V[x] >> 1;
+    mState.V[0xF] = vf; 
 }
 
 // 0x8XY7   VX = VY - VX, VF = 1 if borrow did not occur
 inline void Chip8::aluSubn(uint8_t x, uint8_t y) { 
     // NOTE: some references indicate that VF = 1 if X > y. But it's X >= Y.
     // That is, VF = 1 if subtraction did not result in a borrow.
-    uint8_t vf = mV[y] >= mV[x]; 
-    mV[x] = mV[y] - mV[x];
-    mV[0xF] = vf;
+    uint8_t vf = mState.V[y] >= mState.V[x]; 
+    mState.V[x] = mState.V[y] - mState.V[x];
+    mState.V[0xF] = vf;
 }
 
 // 0x8XY8   VX = VX SHL VY, VF = bit shifted out
 inline void Chip8::aluShl(uint8_t x, uint8_t y) { 
-    uint8_t vf = mV[x]&0x80 ? 1 : 0;
-    mV[x] = mV[x] << 1;
-    mV[0xF] = vf;
+    uint8_t vf = mState.V[x]&0x80 ? 1 : 0;
+    mState.V[x] = mState.V[x] << 1;
+    mState.V[0xF] = vf;
 }
 
 // 0x9XYx   Skip if two registers hold inequal values
 void Chip8::groupSneReg(uint16_t inst) {
-    if(mV[x(inst)] != mV[y(inst)]) {
-        mPC+=2;
+    if(mState.V[x(inst)] != mState.V[y(inst)]) {
+        mState.NextPC+=2;
     }
 }
 
 //0xAnnn   load index immediate
 void Chip8::groupLdiImm(uint16_t inst) {
-    mI = imm12(inst);
+    mState.Index = imm12(inst);
 }
 
 // 0xBnnn   jump to I + xxx
 void Chip8::groupJpV0Index(uint16_t inst) {
-    mPC = mI+imm12(inst);
+    mState.NextPC = mState.Index+imm12(inst);
 }
 
 //0xCXnn   random, with mask.
 void Chip8::groupRand(uint16_t inst) {
-    mV[x(inst)] = mRender.random() & imm8(inst);
+    mState.V[x(inst)] = mRender.random() & imm8(inst);
 }
 
 //0xDXYL   draw! If you think there's a bug in here, you're probably right.
@@ -307,8 +299,8 @@ ErrorType Chip8::groupGraphics(uint16_t inst) {
     // The number of lines in the sprite that we should draw.
     uint8_t rows = imm4(inst);
     // X, Y location of the sprite, from registers.
-    uint8_t xc = mV[x(inst)];
-    uint8_t yc = mV[y(inst)];
+    uint8_t xc = mState.V[x(inst)];
+    uint8_t yc = mState.V[y(inst)];
 
     // In chip8 mode, we draw 8 columns. 
     uint8_t cols = 8;
@@ -326,16 +318,16 @@ ErrorType Chip8::groupGraphics(uint16_t inst) {
     }
 
     // Clear the collision flag.
-    mV[0xF] = 0;
+    mState.V[0xF] = 0;
 
     // Draw row-by-row
     for(int row = 0; row < rows; row++) {
         // Collect the data to draw from memory.
         uint16_t rowData;
         if(superSprite) {
-            if(!ReadWord(mI+row*2, rowData)) return BAD_READ;
+            if(!ReadWord(mState.Index+row*2, rowData)) return BAD_READ;
         } else {
-            if(!mMemory.read(mI+row, (uint8_t*)&rowData, 1)) return BAD_READ;
+            if(!mMemory.read(mState.Index+row, (uint8_t*)&rowData, 1)) return BAD_READ;
         }
 
         for(int col = 0; col < cols; col++) {
@@ -344,7 +336,7 @@ ErrorType Chip8::groupGraphics(uint16_t inst) {
             uint8_t py = yc + row;
 
             // Draw the pixel
-            mV[0xF] |= mRender.drawPixel(px,py, on);
+            mState.V[0xF] |= mRender.drawPixel(px,py, on);
             rowData<<=1;
 
         }
@@ -354,17 +346,17 @@ ErrorType Chip8::groupGraphics(uint16_t inst) {
 
 // 0xEX9E / 0xEXA1 - skip if key pressed/not pressed
 ErrorType Chip8::groupKeyboard(uint16_t inst) {
-    uint8_t key = mV[x(inst)];
+    uint8_t key = mState.V[x(inst)];
     uint16_t mask = 0x01 << key;
     switch(imm8(inst)) {
         case 0x9E:
-            if(mButtons & mask) {
-                mPC += 2;
+            if(mState.Buttons & mask) {
+                mState.NextPC += 2;
             }
             break;
         case 0xA1:
-            if(!(mButtons & mask)) {
-                mPC += 2;
+            if(!(mState.Buttons & mask)) {
+                mState.NextPC += 2;
             }
             break;
         default: return UNIMPLEMENTED_INSTRUCTION;
@@ -393,59 +385,59 @@ ErrorType Chip8::groupLoad(uint16_t inst) {
 }
 
 // 0xFX07 - Read delay timer into VX.
-inline void Chip8::readDT(uint8_t into) { mV[into] = mDT; }
+inline void Chip8::readDT(uint8_t into) { mState.V[into] = mState.DelayTimer; }
 
 // 0xFX0A - Pause execution until a key is pressed.
 inline void Chip8::waitK(uint8_t into) {
-    mAwaitingKey = true;
-    mWaitKeyDest = into;
+    mState.AwaitingKey = true;
+    mState.WaitKeyDest = into;
 }
 
 // 0xFX15 - Set the delay timer to value in VX.
-inline void Chip8::setDT(uint8_t from) { mDT = mV[from]; }
+inline void Chip8::setDT(uint8_t from) { mState.DelayTimer = mState.V[from]; }
 
 // 0xFX18 - Beep for the duration in VX.
 inline void Chip8::makeBeep(uint16_t durReg) { 
-    mRender.beep(mV[durReg]);
+    mRender.beep(mState.V[durReg]);
 }
 
 // 0xFX1E - Add VX to I
-inline void Chip8::addI(uint8_t from) { mI += mV[from]; }
+inline void Chip8::addI(uint8_t from) { mState.Index += mState.V[from]; }
 
 // 0xFX29 - Load low-res font character in VX
-inline void Chip8::ldiFont(uint8_t from) { mI = 5 * mV[from]; }
+inline void Chip8::ldiFont(uint8_t from) { mState.Index = 5 * mState.V[from]; }
 
 // 0xFX30 - Load hi-res font character in VX
-inline void Chip8::ldiHiFont(uint8_t from) { mI = 0x10*5 + (10 * mV[from]); }
+inline void Chip8::ldiHiFont(uint8_t from) { mState.Index = 0x10*5 + (10 * mState.V[from]); }
 
 // 0xFX33 - Write binary coded decimal encoding of VX to memory pointed to by I.
 inline ErrorType Chip8::writeBCD(uint8_t from) {
-    uint8_t val = mV[from];
+    uint8_t val = mState.V[from];
     uint8_t vals[3] = {val/100, (val/10)%10, val%10};
-    return mMemory.write(mI, vals, 3) ? NO_ERROR : OUT_OF_MEMORY;
+    return mMemory.write(mState.Index, vals, 3) ? NO_ERROR : OUT_OF_MEMORY;
 }
 
 // 0xFX55 - Store V0-VX starting at I.
 inline ErrorType Chip8::strReg(uint8_t upto) {
-    return mMemory.write(mI, mV, upto+1) ? NO_ERROR : OUT_OF_MEMORY;
+    return mMemory.write(mState.Index, mState.V, upto+1) ? NO_ERROR : OUT_OF_MEMORY;
 }
 
 // 0xFX65 - Read into V0-VX starting at I.
 inline ErrorType Chip8::ldReg(uint8_t upto) {
-    return mMemory.read(mI, mV, upto+1) ? NO_ERROR : BAD_READ;
+    return mMemory.read(mState.Index, mState.V, upto+1) ? NO_ERROR : BAD_READ;
 }
 
 
 // 0xFX75 - Store registers into special platform storage
 inline void Chip8::strR(uint8_t upto) {
     for(int i = 0; i <= upto; i++) {
-        mR[i] = mV[i];
+        mState.R[i] = mState.V[i];
     }
 }
 
 // 0xFX85 - Read registers from special platform storage
 inline void Chip8::ldR(uint8_t upto) {
     for(int i = 0; i <= upto; i++) {
-        mV[i] = mR[i];
+        mState.V[i] = mState.R[i];
     }
 }

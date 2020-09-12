@@ -4,8 +4,10 @@
 #include "memory.hpp"
 #include "errors.hpp"
 #include "chip8-reg.hpp"
+#include "state.hpp"
 
 #include <stdint.h>
+
 
 class Chip8 {
     // Rendering implementation from platform.
@@ -14,40 +16,7 @@ class Chip8 {
     // Memory implementation from platform.
     Memory &mMemory;
 
-    // PC starts to 200 conventionally
-    // we handle the offset into program memory when reading PC
-    uint16_t mPC = 0x200;
-
-    // Index register
-    uint16_t mI = 0;
-
-    // Default register set
-    uint8_t mV[16];
-    
-    // Super Chip8 "RPL" register set.
-    uint8_t mR[8];
-
-    // Delay timer.
-    uint16_t mDT;
-
-    // Stack pointer for calls.
-    uint8_t mSP = 0;
-
-    // Stack for calls.
-    uint16_t mStack[16];
-
-    // True while the program is executing.
-    bool mRunning = false;
-
-    // Last button mask received from the platform.
-    uint16_t mButtons = 0;
-
-    // If mAwaitingKey is true, this holds the target register to store the
-    // next keypress.
-    uint8_t mWaitKeyDest = 0;
-
-    // Indicates that we are paused waiting for the next keypress.
-    bool mAwaitingKey = false;
+    EmuState mState;
     
     // read buttons and handle any updates
     inline void handleButtons();
@@ -220,17 +189,11 @@ class Chip8 {
         void Tick();
 
        // returns true if the emulator is running
-       bool Running() { return mRunning; }
-
-       // if the emulator is stopped, start it, and vice-versa
-       void Toggle() { mRunning = !mRunning; };
-
-       // Get the current PC. If the emulator is halted, this will be the last 
-       // instruction for which execution was attempted, whether it was successful
-       // or not.
-       uint16_t GetPC();
+       bool Running() { return mState.Running; }
 
        // Read a 16-bit word from the memory of this Chip8 emulator at the
        // specified address, handling endian byte swap.
        bool ReadWord(uint16_t addr, uint16_t &result);
+
+       const EmuState& State() { return mState; }
 };
