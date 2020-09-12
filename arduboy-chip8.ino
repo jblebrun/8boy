@@ -24,12 +24,10 @@ uint8_t pidx;
 const Program *program;
 bool super = false;
 
-void printWord(uint16_t w) {
-    boy.print(F("0x"));
-    if((w & 0xF000) == 0) boy.print(0);
-    if((w & 0xFF00) == 0) boy.print(0);
-    if((w & 0xFFF0) == 0) boy.print(0);
-    boy.println(w, HEX);
+void printPadded(uint32_t w, uint8_t nybbles) {
+    for(int i = nybbles - 1; i >= 0; i--) {
+        boy.print((w >> i*4) & 0xF, HEX);
+    }
 }
 
 unsigned long next = 0;
@@ -87,13 +85,27 @@ void runEmu() {
             case BAD_FETCH: boy.println(F("BAD FETCH")); break;
             case UNIMPLEMENTED_INSTRUCTION: boy.println(F("UNIMPL")); break;
         }
-        uint16_t pc = emu.GetPC();
+
+        const EmuState &state = emu.State();
         boy.print(F("PC: "));
-        printWord(pc);
-        boy.print(F("INST: "));
-        uint16_t inst;
-        emu.ReadWord(pc, inst);
-        printWord(inst);
+        printPadded(state.PC, 3);
+        boy.print(F(" : "));
+        printPadded(state.Instruction, 3);
+        boy.println("");
+        boy.print("V: ");
+        for (int i = 0; i < 16; i++) {
+            printPadded(state.V[i], 2);
+            boy.print(" ");
+            if(i == 5 || i == 12) boy.println("");
+        }
+        boy.print("SP: ");
+        printPadded(state.StackPointer, 2);
+        boy.println("");
+        for(int i = 0; i < state.StackPointer; i++) {
+            printPadded(state.Stack[state.StackPointer-1-i], 3);
+            boy.print(" ");
+            if(i == 4 | i == 9 | i == 14) boy.println("");
+        }
     }
 
 }
