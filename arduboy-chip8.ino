@@ -12,7 +12,7 @@ Arduboy2 boy;
 ArduMem memory;
 
 ArduboyRender render(boy);
-SerialTracer tracer(true);
+SerialTracer tracer(false);
 Chip8 emu(render, memory, tracer);
 
 void setup() {
