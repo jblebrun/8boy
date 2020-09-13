@@ -1,0 +1,65 @@
+#include "PrintHelper.hpp"
+
+
+void PrintHelper::handleCommand(Format f, va_list *src) {
+    // If it's in the ASCII range, print a a character.
+    if (f < 256) {
+        mPrint.write(f);
+        return;
+    }
+    switch(f) {
+        // Have to use int, not uint8_t/uint16_t, because va_list 
+        // undergoes default argument promotion.
+        case X8: handleX<int>(2, src); break;
+        case X12: handleX<int>(3, src); break;
+        case X16: handleX<int>(4, src); break;
+        case FS: handlePrint<__FlashStringHelper*>(src); break;
+        case AX8: handleArray<uint8_t*>(2, src); break;
+        case AX12: handleArray<uint16_t*>(3, src); break;
+    }
+}
+
+void PrintHelper::printfs(Format f, ...) {
+    va_list(argp);
+    va_start(argp, f);
+
+    while (f != DONE) {
+        handleCommand(f, &argp);
+        f= va_arg(argp, int);
+    }
+    va_end(argp);
+}
+
+template<typename T>
+void PrintHelper::printPadded(T w, uint8_t nybbles) {
+    for(int i = nybbles - 1; i >= 0; i--) {
+        mPrint.print((w >> i*4) & 0xF, HEX);
+    }
+}
+
+template<typename T>
+void PrintHelper::printArray(T a, int size, uint8_t nybbles) {
+    for(int i = 0; i < size; i++) {
+        printPadded(a[i], nybbles);
+        space();
+    }
+}
+
+template<typename T>
+void PrintHelper::handleX(uint8_t nybbles, va_list *src) {
+    T n = va_arg(*src, int);
+    printPadded(n, nybbles);
+}
+
+template<typename T>
+void PrintHelper::handlePrint(va_list *src) {
+    T fs = va_arg(*src, T);
+    mPrint.print(fs);
+}
+
+template<typename T>
+void PrintHelper::handleArray(uint8_t nybbles, va_list *src) {
+    T a = va_arg(*src, T);
+    int count = va_arg(*src, int);
+    printArray(a, count, nybbles);
+}
