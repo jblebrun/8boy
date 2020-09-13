@@ -284,9 +284,9 @@ void Chip8::groupLdiImm(uint16_t inst) {
     mState.Index = imm12(inst);
 }
 
-// 0xBnnn   jump to I + xxx
+// 0xBnnn   jump to v[0] + xxx
 void Chip8::groupJpV0Index(uint16_t inst) {
-    mState.NextPC = mState.Index+imm12(inst);
+    mState.NextPC = mState.V[0]+imm12(inst);
 }
 
 //0xCXnn   random, with mask.
