@@ -1,14 +1,7 @@
 #pragma once
 
-#include "../chip8/memory.hpp"
+#include "../chip8/SlabMemory.hpp"
 #include <Arduino.h>
-
-#define SLAB_SIZE 16
-
-struct Slab {
-    uint8_t page;
-    uint8_t data[SLAB_SIZE];
-};
 
 #define SLAB_COUNT 40
 
@@ -25,37 +18,20 @@ struct Slab {
 // While it's possible to construct a program that would run on the original machine, 
 // but results in an OOM here, this implementation is likely to provide enough
 // RAM workspace for most real-world Chip8 games.
-class ArduMem : public Memory {
+class ArduMem : public SlabMemory {
+
     // The bytes for the program, which reside in PROGMEM
     const uint8_t *mProgram;
 
     // The size of mProgram
     uint16_t mProgramSize;
 
-    // Slabs for dynamic memory allocation.
+    // The slabs provided to the base class.
     Slab mSlabs[SLAB_COUNT];
 
-    // Initialize the provided slab, filling it with either 0, or the value of
-    // the address from PROGMEM, if there is a mapping.
-    void initSlab(Slab &slab, uint16_t addr);
+    bool externalRead(uint16_t addr, uint8_t* dest, uint8_t size);
 
-    // Find a write slab that can service the provided address. If there isn't one
-    // for the page of the requested address, and some are still available, a new 
-    // one will be initialized and returned.
-    Slab* findWriteSlab(uint16_t);
-
-    // Find the first slab in the provided base + size range, if there is one, else
-    // return null.
-    Slab* firstReadSlab(uint16_t, uint8_t);
-
-    // Attempt to read data from PROGMEM resources for the requested range. If the
-    // entire range can't be filled with data from PROGMEM items, it returns null.
-    bool pgmRead(uint16_t, uint8_t*, uint8_t);
-    
     public:
-        ArduMem() {};
-        virtual void load(const uint8_t *program, const uint16_t size);
-        virtual bool read(uint16_t addr, uint8_t *dst, uint8_t size);
-        virtual bool write(uint16_t addr, uint8_t *src, uint8_t size);
-        virtual void reset();
+        ArduMem();
+        void load(const uint8_t *program, uint16_t size);
 };

@@ -1,107 +1,17 @@
 #include "mem.hpp"
+#define FONT_STORAGE_MODIFIER PROGMEM
+#include "../chip8/font.hpp"
 
-const uint8_t font[] PROGMEM = {
-    0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
-    0x20, 0x60, 0x20, 0x20, 0x70, // 1
-    0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
-    0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
-    0x90, 0x90, 0xF0, 0x10, 0x10, // 4
-    0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
-    0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
-    0xF0, 0x10, 0x20, 0x40, 0x40, // 7
-    0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
-    0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
-    0xF0, 0x90, 0xF0, 0x90, 0x90, // A
-    0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
-    0xF0, 0x80, 0x80, 0x80, 0xF0, // C
-    0xE0, 0x90, 0x90, 0x90, 0xE0, // D
-    0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
-    0xF0, 0x80, 0xF0, 0x80, 0x80, // F
-};
+ArduMem::ArduMem() : SlabMemory(mSlabs, SLAB_COUNT) {} 
 
-const uint8_t fonthi[] PROGMEM = {
-    0x78, 0xFC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xFC, 0x78, // 0
-    0x30, 0x70, 0xF0, 0x30, 0x30, 0x30, 0x30, 0x30, 0x78, 0xFC, // 1
-    0x78, 0xFC, 0x0C, 0x0C, 0xFC, 0xFC, 0xC0, 0xC0, 0xFC, 0x78, // 2
-    0x78, 0xFC, 0x0C, 0x0C, 0x38, 0x38, 0x0C, 0x0C, 0xFC, 0x78, // 3
-    0x48, 0xCC, 0xCC, 0xCC, 0xFC, 0x7C, 0x0C, 0x0C, 0x0C, 0x08, // 4
-    0x78, 0xFC, 0xC0, 0xC0, 0xFC, 0xFC, 0x0C, 0x0C, 0xFC, 0x78, // 5
-    0x78, 0xFC, 0xC0, 0xC0, 0xF8, 0xFC, 0xCC, 0xCC, 0xFC, 0x78, // 6
-    0x78, 0xFC, 0x0C, 0x0C, 0x18, 0x18, 0x18, 0x30, 0x30, 0x30, // 7
-    0x78, 0xFC, 0xCC, 0xCC, 0x78, 0x78, 0xCC, 0xCC, 0xFC, 0x78, // 8
-    0x78, 0xFC, 0xCC, 0xCC, 0xFC, 0x7C, 0x0C, 0x0C, 0xFC, 0x78, // 9
-    0x78, 0xFC, 0xCC, 0xCC, 0xFC, 0xFC, 0xCC, 0xCC, 0xCC, 0xCC, // A
-    0xF8, 0xFC, 0xCC, 0xCC, 0xF8, 0xF8, 0xCC, 0xCC, 0xFC, 0xF8, // B
-    0x78, 0xFC, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xC0, 0xFC, 0x78, // C
-    0xF8, 0xFC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xFC, 0xF8, // D
-    0x78, 0xFC, 0xC0, 0xC0, 0xF8, 0xF8, 0xC0, 0xC0, 0xFC, 0x78, // E
-    0x78, 0xFC, 0xC0, 0xC0, 0xF8, 0xF8, 0xC0, 0xC0, 0xC0, 0xC0, // F
-};
-
-void ArduMem::load(const uint8_t *program, const uint16_t size) {
+// The data in `program` of size `size` should be loaded into the program
+// location in memory (typically, 0x200).
+void ArduMem::load(const uint8_t *program, const uint16_t size)  {
     mProgram = program;
     mProgramSize = size;
 }
 
-void ArduMem::reset() {
-    for(uint8_t i = 0; i < SLAB_COUNT; i++) {
-        mSlabs[i].page = 0;
-    }
-}
-
-// Initialize a new slab for the provided address. 
-// Sets the slab page number, initializes it to 0, and then
-// tries to read in a PROGMEM value. If that fails, the value is
-// set to 0.
-void ArduMem::initSlab(Slab &slab, uint16_t addr) {
-    slab.page = addr >> 4;
-    uint16_t pageStart = addr & 0xFF0;
-    for(uint16_t i = 0; i < 16; i++) {
-        if(!pgmRead(pageStart + i, &slab.data[i], 1)) {
-            slab.data[i] = 0;
-        }
-    }
-}
-
-// Try to find an already-allocated slab for the provided address.
-// This works by searching through the current list of slabs for as
-// long as we see slabs with a page identifier != 0.
-// If a slab is found, a pointer to it is returned.
-// If we reach an unused slab, we return that, the caller can decide
-// to allocate it if desired.
-// If the end of the list is reached with no match, NULL is returned.
-Slab* ArduMem::findWriteSlab(uint16_t addr) {
-    uint8_t page = addr >> 4;
-    for(uint8_t i = 0; i < SLAB_COUNT; i++) {
-        if(mSlabs[i].page == 0) initSlab(mSlabs[i], addr);
-        if(mSlabs[i].page == page) return &mSlabs[i];
-    }
-    return NULL;
-}
-
-// Returns the first slab that would be needed for a read of the requested
-// size, starting from addr.
-// If no slab covers the requested range, NULL is returned.
-Slab* ArduMem::firstReadSlab(uint16_t addr, uint8_t size) {
-    uint8_t minPage = addr >> 4;
-    uint8_t maxPage = (addr+size) >> 4;
-    Slab* found = NULL;
-    for(uint8_t i = 0; i < SLAB_COUNT && mSlabs[i].page != 0; i++) {
-        Slab &slab = mSlabs[i];
-        if (slab.page >= minPage && slab.page <= maxPage) {
-            if(found == NULL || slab.page < found->page) {
-              found = &mSlabs[i];
-            }
-        }
-    }
-    return found;
-}
-
-
-// Read data that's fully inside PROGMEM arrays.
-// Returns false if you request something that's actually *not* fully inside
-// PROGMEM.
-bool ArduMem::pgmRead(uint16_t addr, uint8_t *dest, uint8_t size) {
+bool ArduMem::externalRead(uint16_t addr, uint8_t *dest, uint8_t size) {
     uint8_t *src = NULL;
 
     if(addr + size < sizeof(font)) {
@@ -118,73 +28,5 @@ bool ArduMem::pgmRead(uint16_t addr, uint8_t *dest, uint8_t size) {
     if(!src) return false;
 
     memcpy_P(dest, src, size);
-    return true;
-}
-
-// Read some bytes from memory.
-// addr, dest, and size parameters are updated as function progresses
-// to track progress.
-// This function should handle ranges that are covered by a mixture of slabs
-// and pgm.
-bool ArduMem::read(uint16_t addr, uint8_t* dest, uint8_t size) {
-    if(size == 0) return true;
-
-    Slab* slab = NULL;
-
-    // In this loop, we repeat the following:
-    // 1. Find the earliest-in-memory slab covering the current range.
-    // 2. If the slab isn't at the beginning, copy any program data that's before it.
-    // 3. Copy the slab data up to the end of this slab.
-    do {
-        slab = firstReadSlab(addr, size);
-        if(slab) {
-            // Copy any pgm data up to slab start.
-            if(addr < slab->page * 16) {
-                uint8_t pgmToRead = (slab->page * 16) - addr;
-                if(!pgmRead(addr, dest, pgmToRead)) return false;
-                addr += pgmToRead;
-                dest += pgmToRead;
-                size -= pgmToRead;
-            }
-            
-            // Copy slab data
-            uint8_t slabToRead = 16 - (addr & 0xF);
-            if(slabToRead > size) slabToRead = size;
-            memcpy(dest, &(slab->data[addr & 0xF]), slabToRead);
-            addr += slabToRead;
-            dest += slabToRead;
-            size -= slabToRead;
-        }
-    } while(size > 0 && slab);
-
-    
-    // After the final slab is handled, this handles any remaining pgm data that
-    // may need to be written.
-    return pgmRead(addr, dest, size);
-}
-
-// writeMem finds or allocates a slab of memory and
-// updates the provided value in it.
-// If the slab allocator is full and we need a new one,
-// the program halts and the screen displays a message,
-// the provided program will need more slabs to run successfully.
-// If an unallocated page is returned, its page is set to the
-// page for the requested address. 
-// If the page overlaps with any program memory, the program
-// memory is copied into the slab.
-bool ArduMem::write(uint16_t addr, uint8_t* src, uint8_t size) {
-    do {
-        // Find or initialize the next slab to write to.
-        Slab *slab = findWriteSlab(addr);
-        if(!slab) return false;
-
-        // Write as much into the slab.
-        uint8_t slabToWrite = 16 - (addr & 0xF);
-        if(slabToWrite > size) slabToWrite = size;
-        memcpy(&(slab->data[addr & 0xF]), src, slabToWrite);
-        addr += slabToWrite;
-        src += slabToWrite;
-        size -= slabToWrite;
-    } while(size > 0);
     return true;
 }

@@ -11,10 +11,6 @@
 // direct addressing model.
 class Memory {
     public: 
-        // The data in `program` of size `size` should be loaded into the program
-        // location in memory (typically, 0x200).
-        virtual void load(const uint8_t *program, const uint16_t size) = 0;
-
         // Populate the memory starting at *dest with the memory values at 
         // address addr. If The read can't be satisfied, returns false.
         virtual bool read(uint16_t addr, uint8_t *dest, uint8_t size) = 0;
@@ -23,8 +19,4 @@ class Memory {
         // underlying implementation can't allocate enough memory to satisfy the 
         // write, false is returned. Some data may have been written.
         virtual bool write(uint16_t addr, uint8_t *src, uint8_t size) = 0;
-
-        // Reset any internal implementation-specific state. It's not necessary
-        // to clear all of the actual memory.
-        virtual void reset() = 0;
 };
