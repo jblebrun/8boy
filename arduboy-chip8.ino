@@ -6,6 +6,8 @@
 #include "src/arduboy/render.hpp"
 #include "src/arduboy/mem.hpp"
 
+#include "src/arduboy/PrintHelper.hpp"
+
 
 Arduboy2 boy;
 ArduMem memory;
@@ -23,12 +25,6 @@ void setup() {
 uint8_t pidx;
 const Program *program;
 bool super = false;
-
-void printPadded(uint32_t w, uint8_t nybbles) {
-    for(int i = nybbles - 1; i >= 0; i--) {
-        boy.print((w >> i*4) & 0xF, HEX);
-    }
-}
 
 unsigned long next = 0;
 void runEmu() {
@@ -86,26 +82,27 @@ void runEmu() {
             case UNIMPLEMENTED_INSTRUCTION: boy.println(F("UNIMPL")); break;
         }
 
+        PrintHelper ph(boy);
         const EmuState &state = emu.State();
-        boy.print(F("PC: "));
-        printPadded(state.PC, 3);
-        boy.print(F(" : "));
-        printPadded(state.Instruction, 3);
-        boy.println("");
-        boy.print("V: ");
-        for (int i = 0; i < 16; i++) {
-            printPadded(state.V[i], 2);
-            boy.print(" ");
-            if(i == 5 || i == 12) boy.println("");
-        }
-        boy.print("SP: ");
-        printPadded(state.StackPointer, 2);
-        boy.println("");
-        for(int i = 0; i < state.StackPointer; i++) {
-            printPadded(state.Stack[state.StackPointer-1-i], 3);
-            boy.print(" ");
-            if(i == 4 | i == 9 | i == 14) boy.println("");
-        }
+
+        
+        uint8_t stackShow = 5;
+        if(state.StackPointer < 5) stackShow = state.StackPointer; 
+        ph.printfs(
+            X12, state.PC, ':', X16, state.Instruction,
+
+            '\n',
+            FS, F("V: "),
+            AX8, &state.V[0], 6, '\n',
+            AX8, &state.V[6], 7, '\n',
+            AX8, &state.V[13], 3,
+
+            FS, F("SP: "), 
+            X8, state.StackPointer, '\n',
+
+            AX12, &state.Stack[state.StackPointer - stackShow - 1], stackShow , '\n',
+            DONE
+        );
     }
 
 }

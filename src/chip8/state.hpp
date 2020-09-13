@@ -30,7 +30,7 @@ struct EmuState {
     uint16_t Stack[16] = {0};
     
     // Stack Pointer
-    uint16_t StackPointer = 0;
+    uint8_t StackPointer = 0;
 
     // ArduboyChip8 data
     // True if the emualtor is in the running state
