@@ -5,15 +5,15 @@
 #include "programs.h"
 #include "src/arduboy/render.hpp"
 #include "src/arduboy/mem.hpp"
-
 #include "src/arduboy/PrintHelper.hpp"
-
+#include "src/arduboy/tracer.hpp"
 
 Arduboy2 boy;
 ArduMem memory;
 
 ArduboyRender render(boy);
-Chip8 emu(render, memory);
+SerialTracer tracer(true);
+Chip8 emu(render, memory, tracer);
 
 void setup() {
     boy.begin();
@@ -168,11 +168,8 @@ void printMenu() {
 
     // Type of program.
     super = pgm_read_byte(&programs[pidx].super);
-    if(super) {
-        boy.println(F("SCHIP-8"));
-    } else {
-        boy.println(F("CHIP-8"));
-    }
+    if(super) boy.print("S");
+    boy.println(F("CHIP-8"));
 
     // Info from program, if any was included.
     strcpy_P(buffer, (const char*)pgm_read_ptr(&programs[pidx].info));
