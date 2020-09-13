@@ -16,7 +16,7 @@ SerialTracer tracer(false);
 Chip8 emu(render, memory, tracer);
 
 void setup() {
-    boy.begin();
+    boy.boot();
     boy.initRandomSeed();
     Serial.begin(115200);
     boy.setFrameRate(60);
@@ -61,6 +61,7 @@ void runEmu() {
             boy.pressed(LEFT_BUTTON) && 
             boy.pressed(RIGHT_BUTTON)) {
         emu.Reset();
+        memory.reset();
         program = NULL;
     }
 

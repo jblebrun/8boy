@@ -17,7 +17,6 @@ void Chip8::Reset() {
     mRender.clear();
     mRender.setMode(CHIP8);
     mRender.beep(0);
-    mMemory.reset();
 }
 
 // Tick updates any state that gets updated at 60Hz by chip-8
@@ -416,7 +415,7 @@ inline void Chip8::addI(uint8_t from) { mState.Index += mState.V[from]; }
 // 0xFX29 - Load low-res font character in VX
 inline void Chip8::ldiFont(uint8_t from) { mState.Index = 5 * mState.V[from]; }
 
-// 0xFX30 - Load hi-res font character in VX
+// 0xFX30 - Load hi-res font character in VX. It appears immediately after the low-res font.
 inline void Chip8::ldiHiFont(uint8_t from) { mState.Index = 0x10*5 + (10 * mState.V[from]); }
 
 // 0xFX33 - Write binary coded decimal encoding of VX to memory pointed to by I.
