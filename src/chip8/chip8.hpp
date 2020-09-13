@@ -5,9 +5,9 @@
 #include "errors.hpp"
 #include "chip8-reg.hpp"
 #include "tracer.hpp"
+#include "config.hpp"
 
 #include <stdint.h>
-
 
 class Chip8 {
     // Rendering implementation from platform.
@@ -21,6 +21,8 @@ class Chip8 {
 
     EmuState mState;
     
+    Config mConfig;
+
     // read buttons and handle any updates
     inline void handleButtons();
 
@@ -176,6 +178,9 @@ class Chip8 {
         // and begin running.
         void Reset();
 
+        void SetConfig(Config config) { mConfig = config; }
+        Config GetConfig() { return mConfig; }
+
         // Read and execute one Chip8 operation. Instructions will be read from memory
         // using the provided memory implementation.
         // Returns ErrorType, which includes information about running the instruction, like
@@ -191,12 +196,12 @@ class Chip8 {
         // namely, beep timer and delay timer. Also triggers screen draw.
         void Tick();
 
-       // returns true if the emulator is running
-       bool Running() { return mState.Running; }
+        // returns true if the emulator is running
+        bool Running() { return mState.Running; }
+ 
+        // Read a 16-bit word from the memory of this Chip8 emulator at the
+        // specified address, handling endian byte swap.
+        bool ReadWord(uint16_t addr, uint16_t &result);
 
-       // Read a 16-bit word from the memory of this Chip8 emulator at the
-       // specified address, handling endian byte swap.
-       bool ReadWord(uint16_t addr, uint16_t &result);
-
-       const EmuState& State() { return mState; }
+        const EmuState& State() { return mState; }
 };

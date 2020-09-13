@@ -194,36 +194,44 @@ func dump(dir, filename, codename string) (int, error) {
 	return pc, nil
 }
 
+type programInfo struct {
+	keymap     string
+	info       string
+	shiftquirk bool
+}
+
 type program struct {
 	name     string
 	codename string
 	size     int
 	super    bool
-	keymap   string
-	info     string
+	info     programInfo
 }
 
-// Load key map as six bytes to write out as array literal:
-// 0xUD, 0xLR, 0xAB
-const defaultMap = "0x14, 0x3C, 0xAB"
+const defaultKeymap = "0x58, 0x79, 0x46"
 
-func loadKeyMap(dir, filename string) string {
-	basename := strings.TrimSuffix(filename, filepath.Ext(filename))
-	km, err := ioutil.ReadFile(filepath.Join(dir, basename+".map"))
-	if err != nil {
-		log.Println("no map, using default:", err)
-		return defaultMap
-	}
-	return strings.Trim(string(km), "\n")
-}
-
-func loadInfo(dir, filename string) string {
+func loadInfo(dir, filename string) *programInfo {
 	basename := strings.TrimSuffix(filename, filepath.Ext(filename))
 	info, err := ioutil.ReadFile(filepath.Join(dir, basename+".info"))
 	if err != nil {
 		log.Println("no info for", filename)
+		return &programInfo{keymap: defaultKeymap}
 	}
-	return strings.Trim(string(info), "\n")
+
+	var pgmInfo programInfo
+	lines := strings.Split(string(info), "\n")
+	for _, line := range lines {
+		fields := strings.SplitN(line, "=", 2)
+		switch fields[0] {
+		case "shiftquirk":
+			pgmInfo.shiftquirk = true
+		case "info":
+			pgmInfo.info = fields[1]
+		case "keymap":
+			pgmInfo.keymap = fields[1]
+		}
+	}
+	return &pgmInfo
 }
 
 func getProgram(dir, filename string) *program {
@@ -235,9 +243,9 @@ func getProgram(dir, filename string) *program {
 		log.Println(err)
 		return nil
 	}
-	kmap := loadKeyMap(dir, filename)
 	info := loadInfo(dir, nicename)
-	return &program{name: nicename, codename: codename, info: info, size: size, keymap: kmap, super: ext == ".sch8"}
+	pgm := &program{name: nicename, codename: codename, size: size, super: ext == ".schi8", info: *info}
+	return pgm
 }
 
 func dumpAllRoms(dir string) {
@@ -254,6 +262,7 @@ func dumpAllRoms(dir string) {
     const bool super;
     const uint8_t *info;
     const uint8_t keymap[3];
+	const bool shiftquirk;
 };`)
 	var ps []*program
 	for _, filename := range files {
@@ -272,7 +281,7 @@ func dumpAllRoms(dir string) {
 	}
 
 	for _, p := range ps {
-		fmt.Printf("const uint8_t info_%s[] PROGMEM = \"%s\";\n", p.codename, p.info)
+		fmt.Printf("const uint8_t info_%s[] PROGMEM = \"%s\";\n", p.codename, p.info.info)
 	}
 
 	fmt.Println("const Program programs[] PROGMEM = {")
@@ -287,9 +296,10 @@ func dumpAllRoms(dir string) {
         .size=%d, 
         .super=%s, 
         .info=info_%s, 
-        .keymap={%s} 
+		.keymap={%s},
+		.shiftquirk=%v,
     },
-`, p.codename, p.codename, p.size, superField, p.codename, p.keymap)
+`, p.codename, p.codename, p.size, superField, p.codename, p.info.keymap, p.info.shiftquirk)
 	}
 	fmt.Println("};")
 }

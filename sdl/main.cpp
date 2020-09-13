@@ -27,7 +27,7 @@ int main(int argc, char* argv[]) {
     std::vector<RunnerProgram> pgms(PROGRAM_COUNT);
     for(int i = 0; i < PROGRAM_COUNT; i++) {
         const Program* pgm = &programs[i];
-        pgms[i] = (RunnerProgram){pgm->code, pgm->size, pgm->name};
+        pgms[i] = (RunnerProgram){pgm->code, pgm->size, pgm->name, pgm->shiftquirk};
     }
 
     Chip8Runner runner(renderer, pgms);

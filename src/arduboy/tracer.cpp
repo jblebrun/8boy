@@ -1,6 +1,6 @@
 #include "tracer.hpp"
 
-void SerialTracer::exec(const EmuState &state) {
+void SerialTracer::exec(const EmuState &state, const Config &config) {
     if(Serial.peek() != -1) {
         mTracing = !mTracing;
     }
@@ -13,8 +13,10 @@ void SerialTracer::exec(const EmuState &state) {
         FS, F(" ["),
         AX8, state.V, 16,
         FS, F("]  I="),
-        X16, state.Index, '\r', '\n',
-
+        X16, state.Index,
+        
+        FS, F(" shiftquirks="), X8, config.ShiftQuirk,
+        '\r', '\n',
         DONE
     );
 }
@@ -31,7 +33,7 @@ __FlashStringHelper* SerialTracer::errorMessage(ErrorType errorType) {
     return NULL;
 }
 
-void SerialTracer::error(ErrorType errorType, const EmuState &state) {
+void SerialTracer::error(ErrorType errorType, const EmuState &state, const Config &config) {
     __FlashStringHelper* errorMsg = errorMessage(errorType);
     if(errorMsg != NULL) {
         mPrint.printfs(FS, errorMsg, '\n', DONE);

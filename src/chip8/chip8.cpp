@@ -1,6 +1,7 @@
 #include "chip8.hpp"
 #include "render.hpp"
 #include "string.h"
+#include <stdio.h>
 
 Chip8::Chip8(
     Render &render, 
@@ -91,13 +92,13 @@ ErrorType Chip8::Step() {
     ErrorType error = exec(mState.Instruction);
     if(error != NO_ERROR) {
         mState.Running = false;
-        mTracer.error(error, mState);
+        mTracer.error(error, mState, mConfig);
     }
     return error;
 }
 
 inline ErrorType Chip8::exec(uint16_t inst) {
-    mTracer.exec(mState);
+    mTracer.exec(mState, mConfig);
 
     // Dispatch to the instruction group based on the top nybble.
     switch (inst >> 12) {
@@ -256,9 +257,10 @@ inline void Chip8::aluSub(uint8_t x, uint8_t y) {
 
 // 0x8XY6   VX = VX SHR VY, VF = bit shifted out
 inline void Chip8::aluShr(uint8_t x, uint8_t y) { 
+    uint8_t src = mState.V[mConfig.ShiftQuirk ? x : y];
     // Capture vf, but set actual VF register last.
-    uint8_t vf = mState.V[x]&0x01 ? 1 : 0;
-    mState.V[x] = mState.V[y] >> 1;
+    uint8_t vf = src&0x01 ? 1 : 0;
+    mState.V[x] = src >> 1;
     mState.V[0xF] = vf; 
 }
 
@@ -273,8 +275,9 @@ inline void Chip8::aluSubn(uint8_t x, uint8_t y) {
 
 // 0x8XY8   VX = VX SHL VY, VF = bit shifted out
 inline void Chip8::aluShl(uint8_t x, uint8_t y) { 
-    uint8_t vf = mState.V[x]&0x80 ? 1 : 0;
-    mState.V[x] = mState.V[y] << 1;
+    uint8_t src = mState.V[mConfig.ShiftQuirk ? x : y];
+    uint8_t vf = src&0x80 ? 1 : 0;
+    mState.V[x] = src  << 1;
     mState.V[0xF] = vf;
 }
 
