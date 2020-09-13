@@ -252,7 +252,7 @@ inline void Chip8::aluSub(uint8_t x, uint8_t y) {
 inline void Chip8::aluShr(uint8_t x, uint8_t y) { 
     // Capture vf, but set actual VF register last.
     uint8_t vf = mState.V[x]&0x01 ? 1 : 0;
-    mState.V[x] = mState.V[x] >> 1;
+    mState.V[x] = mState.V[y] >> 1;
     mState.V[0xF] = vf; 
 }
 
@@ -268,7 +268,7 @@ inline void Chip8::aluSubn(uint8_t x, uint8_t y) {
 // 0x8XY8   VX = VX SHL VY, VF = bit shifted out
 inline void Chip8::aluShl(uint8_t x, uint8_t y) { 
     uint8_t vf = mState.V[x]&0x80 ? 1 : 0;
-    mState.V[x] = mState.V[x] << 1;
+    mState.V[x] = mState.V[y] << 1;
     mState.V[0xF] = vf;
 }
 
