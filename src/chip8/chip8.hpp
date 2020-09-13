@@ -11,13 +11,13 @@
 
 class Chip8 {
     // Rendering implementation from platform.
-    Render const &mRender;
+    Render &mRender;
 
     // Memory implementation from platform.
-    Memory const &mMemory;
+    Memory &mMemory;
 
     // Tracer implementation.
-    Tracer const &mTracer;
+    Tracer &mTracer;
 
     EmuState mState;
     
