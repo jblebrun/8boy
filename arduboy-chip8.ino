@@ -115,7 +115,7 @@ void printMenu() {
     boy.clear();
     boy.setCursor(0,0);
 
-    char buffer[16];
+    char buffer[22];
 
     // our window shows up to 5 items:
     // current, 2 above, 2 below
@@ -156,7 +156,7 @@ void printMenu() {
         uint8_t lidx = i + startIdx;
         if(lidx < PROGRAM_COUNT) {
             buffer[0] = lidx == pidx ? '>' : ' ';  
-            strncpy_P(&buffer[1], (const char*)pgm_read_ptr(&programs[lidx].name), 16);
+            strncpy_P(&buffer[1], (const char*)pgm_read_ptr(&programs[lidx].name), sizeof(buffer)-1);
             boy.println(buffer);
             
         } else {
@@ -173,27 +173,31 @@ void printMenu() {
     boy.println(F("CHIP-8"));
 
     // Info from program, if any was included.
-    strcpy_P(buffer, (const char*)pgm_read_ptr(&programs[pidx].info));
+    strncpy_P(buffer, (const char*)pgm_read_ptr(&programs[pidx].info), sizeof(buffer));
     boy.println(buffer);
     boy.display();
 }
 
 void loadCurrentItem() {
-  program = &programs[pidx];
-        uint16_t size = pgm_read_word(&(program->size));
-        const uint8_t* code = pgm_read_ptr(&(program->code));
-        render.setKeyMap(
-                pgm_read_byte(&(program->keymap[0])),
-                pgm_read_byte(&(program->keymap[1])),
-                pgm_read_byte(&(program->keymap[2]))
-                );
-        memory.load(code, size);
+    program = &programs[pidx];
+    Program pgm;
+    memcpy_P(&pgm, program, sizeof(Program));
 
-        // Wait for button release before starting emulator, to avoid 
-        // the loader button press from registering in the game.
-        while(boy.pressed(A_BUTTON));
+    const uint8_t* code = pgm_read_ptr(pgm.code);
+    render.setKeyMap(
+        pgm.keymap[0],
+        pgm.keymap[1],
+        pgm.keymap[2]
+    );
+    memory.load(code, pgm.size);
 
-        emu.Reset();
+    emu.SetConfig({
+        .ShiftQuirk = pgm_read_byte(pgm.shiftquirk),
+    });
+    // Wait for button release before starting emulator, to avoid 
+    // the loader button press from registering in the game.
+    while(boy.pressed(A_BUTTON));
+    emu.Reset();
 }
 
 // This runs once per device loop, while in the game loading phase, to update

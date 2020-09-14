@@ -43,7 +43,7 @@ The easiest way to build the project is to obtain the `arduino-cli` tools, and u
 
 CHIP-8 games should use the filename format `name.ch8`, where name is a valid program identifier (since we just use the name as a variable name in the code). Similarly `name.sch8` indicates a super-chip8 game.
 
-You can also include `name.map` for keymappings (see below), and `name.info` to include a small info string to display in the program loader menu.
+You can also include a `name.info` file to include additional information and configuration for a game. (see below).
 
 The program loader makes a feeble attempt at disassembly, which it will show in comments next to the generated code. Note that it is easily confused: data will be interpreted by code since without flow analysis, there's no way to tell that the bytes are data. Similarly, if data is odd-sized, and program instructions become aligned on odd bytes instead of even, the disassembly will be garbage.
 
@@ -90,6 +90,7 @@ A strategy that's been working well for every game so far is to use a "slab allo
 
 The CHIP-8 runs on the COSMAC VIP, with a 16-key keypad. The Arduboy has 6 keys. Conveniently, most games only use a subset of the keys. Unfortunately, the subset tends to be different for each game. So, it's necessary to figure out which keys a game needs, then a mapping file can be included in the `/rom` directory. 
 
+To map keys, add a `keymap=0x12, 0x34, 0x56` line to the `.info` file 
 The mapping file is simply a text representation of 3 bytes as they would appear in an array initializer in C. The 3 bytes correspond to 6 nibbles in the order: U, D, L, R, A, B, mapping them to one of the 16 keys on the COSMAC VIP keypad. (which are labeled by one of the 16 hexidecimal digits 0-F).
 
 For example, if the map file contains the text: `0x28, 0x46, 0xAB` then:
@@ -99,6 +100,14 @@ For example, if the map file contains the text: `0x28, 0x46, 0xAB` then:
 * Right -> keypad key 6
 * A -> keypad key A
 * B -> keypad key B
+
+## Configuration
+
+You can add per-game configuration by including a `name.info` file in the `roms/` folder that you use to build your project. The info file can contain:
+
+* `info=`  a short text description for the game (limited to one line on Arduboy, abougt 20 characters).
+* `keymap=` a keymap for Arduboy with three nybbles mapping Up, DOwnl, Left, Right A, B as `0xUD, 0xLR, 0xAB`.
+* `shiftquirk` If this is present, use the alternate shift behavior of some modern Chip8 implementations. With this behavior, V[y] is ignored completely, and instead V[x] is shifted by 1.
 
 
 ## Debugging

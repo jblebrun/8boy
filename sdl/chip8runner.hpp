@@ -11,6 +11,7 @@ struct RunnerProgram {
     const uint8_t *code;
     uint16_t size;
     const char* name;
+    bool shiftquirk;
 };
 
 class Chip8Runner {

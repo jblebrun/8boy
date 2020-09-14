@@ -19,6 +19,7 @@ void Chip8Runner::loadEmu() {
     printf("Running %s\n", pgm.name);
     mMemory.load(pgm.code, pgm.size);
     mRender.clear();
+    mEmu.SetConfig((Config){.ShiftQuirk=pgm.shiftquirk});
     mEmu.Reset();
 }
 
