@@ -8,6 +8,12 @@ Quick version (if you are on a machine with `make` support`):
 2. Install go
 3. Run `make install`
 
+## Run SDL-based renderer on (only tested on macOS)
+
+1. Install go
+2. Run `make sdl-run`
+
+
 ## What is it?
 
 It's a CHIP-8 (and SCHIP-8) emulator for Arduboy. CHIP-8 was a virtual machine that ran on an 8-bit microcontroller in the 1970s! Take that, Java.
@@ -28,6 +34,7 @@ Some great resources include:
 * Original COSMAC VIP manual: http://cosmacelf.com/forumarchive/files/VIP/Cosmac%20VIP%20Manual.pdf
 * https://chip-8.github.io/ - Lots of good info on extensions and implementation quirks
 
+
 ## How does this work?
 
 You can specify roms to include in the Arduboy binary by including a rom in the `/roms` directory, and adding the filename to `/roms/menu`. 
@@ -43,11 +50,22 @@ The program loader makes a feeble attempt at disassembly, which it will show in 
 
 ## Implementation Notes
 
+The graphics, input, sound, and random implementations are delegated to an
+implementation that's provided when the engine is construucted.
+
+Since there were some tight restrictions on memory mapping on the ArduBoy (see
+below), memory reads and writes are also abstracted to component to be provided
+at construction time. The implementation includes a default memory
+implementation that simply maps reads and writes into a statically-allocated 4k
+array.  If you're deploying to a platform with more than 4k of RAM, this
+implementation is probably sufficient. It wasn't sufficient for the ArduBoy,
+which is why this component ws abstracted out (see below).
+
 ### Be careful about implementations!
 
 This is an old platform, which has seen many implementations, and has lots written about it. Here are some things I've noticed along the way:
 
-* Some documentation incorrectly describes the behavior of register VF during subtraction operations. Quite a few of the popular resources have this wrong, but the COSMAC VIP manual does give the correct information: The VF register will be set to 1 if VX is greater than *or equal to* VY. That is, if a borrow does not occur.
+* Some older documentation incorrectly describes the behavior of register VF during subtraction operations. Quite a few of the popular resources have this wrong, but the COSMAC VIP manual does give the correct information: The VF register will be set to 1 if VX is greater than *or equal to* VY. That is, if a borrow does not occur.
 
 * In some implementations, the register load/store from memory operations leave the I register pointing to the end of memory space that was worked with. But some games don't operate correctly if this is the behavior.
 

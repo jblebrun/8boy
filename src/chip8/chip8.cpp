@@ -2,8 +2,6 @@
 #include "render.hpp"
 #include "string.h"
 
-#include <Arduino.h>
-
 Chip8::Chip8(
     Render &render, 
     Memory &mem, 
@@ -421,7 +419,7 @@ inline void Chip8::ldiHiFont(uint8_t from) { mState.Index = 0x10*5 + (10 * mStat
 // 0xFX33 - Write binary coded decimal encoding of VX to memory pointed to by I.
 inline ErrorType Chip8::writeBCD(uint8_t from) {
     uint8_t val = mState.V[from];
-    uint8_t vals[3] = {val/100, (val/10)%10, val%10};
+    uint8_t vals[3] = {(uint8_t)(val/100), (uint8_t)((val/10)%10), (uint8_t)(val%10)};
     return mMemory.write(mState.Index, vals, 3) ? NO_ERROR : OUT_OF_MEMORY;
 }
 

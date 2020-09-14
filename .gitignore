@@ -2,4 +2,5 @@ programs.h
 arduboy-chip8.arduino*
 build/
 roms/
+*.orig
 

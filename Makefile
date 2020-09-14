@@ -15,6 +15,11 @@ programs.h: roms/* dump.go
 arduboy-chip8.arduino.avr.leonardo.hex: programs.h *.ino src/chip8/*.cpp src/chip8/*.hpp *.h src/arduboy/*.cpp src/arduboy/*.hpp .arduinoavr
 	arduino-cli compile -b arduino:avr:leonardo
 
+build/sdl: programs.h src/chip8/*.cpp src/chip8/*.hpp sdl/*.cpp sdl/*.hpp 
+	g++ src/chip8/*.cpp sdl/*.cpp -I. -lSDL2 -std=c++11 -g -o build/sdl
+
+run-sdl: build/sdl
+	./build/sdl
 
 build: arduboy-chip8.arduino.avr.leonardo.hex
 
