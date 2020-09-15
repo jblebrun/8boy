@@ -256,13 +256,13 @@ func dumpAllRoms(dir string) {
 	files := strings.Split(string(menufile), "\n")
 
 	fmt.Println(`struct Program {
-    const char *name;
-    const uint8_t *code;
-    const uint16_t size;
-    const bool super;
-    const uint8_t *info;
-    const uint8_t keymap[3];
-	const bool shiftquirk;
+    char *name;
+    uint8_t *code;
+    uint16_t size;
+    bool super;
+    uint8_t *info;
+    uint8_t keymap[3];
+    bool shiftquirk;
 };`)
 	var ps []*program
 	for _, filename := range files {
