@@ -183,13 +183,13 @@ void loadCurrentItem() {
     Program pgm;
     memcpy_P(&pgm, program, sizeof(Program));
 
-    const uint8_t* code = pgm_read_ptr(pgm.code);
     render.setKeyMap(
         pgm.keymap[0],
         pgm.keymap[1],
         pgm.keymap[2]
     );
-    memory.load(code, pgm.size);
+    Serial.println(pgm.size);
+    memory.load(pgm.code, pgm.size);
 
     emu.SetConfig({
         .ShiftQuirk = pgm_read_byte(pgm.shiftquirk),
