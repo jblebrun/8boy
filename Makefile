@@ -8,8 +8,8 @@ default: install-arduboy
 roms/*:
 	cp -r sampleroms roms
 
-programs.h: roms/* dump.go
-	go run dump.go roms > programs.h
+programs.h: roms/* tools/dump.py tools/op.py
+	python3 tools/dump.py roms > programs.h
 
 clean:
 	rm -rf build
@@ -25,7 +25,7 @@ build/arduboy-chip8.arduino.avr.leonardo.hex: programs.h src/chip8/*.cpp src/chi
 	cd arduboy; arduino-cli compile -b arduino:avr:leonardo
 
 install-arduboy: build/arduboy-chip8.arduino.avr.leonardo.hex
-	cd arduboy; ../install-first.sh Leonardo arduino:avr:leonardo
+	cd arduboy; ../tools/install-first.sh Leonardo arduino:avr:leonardo
 
 
 #M5
@@ -34,7 +34,7 @@ install-arduboy: build/arduboy-chip8.arduino.avr.leonardo.hex
 	arduino-cli lib install M5Stack
 
 install-m5: m5
-	cd m5; ../install-first.sh SLAB_USB esp32:esp32:esp32
+	cd m5; ../tools/install-first.sh SLAB_USB esp32:esp32:esp32
 
 m5: m5/build/m5.arduino.esp32.esp32.esp32.hex
 
@@ -45,10 +45,10 @@ m5/build/m5.arduino.esp32.esp32.esp32.hex: programs.h src/chip8/*.cpp src/chip8/
 # SDL Version
 sdl: build/sdl
 
-build/sdl: programs.h src/chip8/*.cpp src/chip8/*.hpp sdl/*.cpp sdl/*.hpp 
+build/sdl: program.h programs.h src/chip8/*.cpp src/chip8/*.hpp sdl/*.cpp sdl/*.hpp 
 	g++ src/chip8/*.cpp sdl/*.cpp -I. -lSDL2 -std=c++11 -g -o build/sdl
 
-sdl-compile: programs.h src/chip8/*.cpp src/chip8/*.hpp sdl/*.cpp sdl/*.hpp 
+sdl-compile: program.h programs.h src/chip8/*.cpp src/chip8/*.hpp sdl/*.cpp sdl/*.hpp 
 	g++ -c src/chip8/*.cpp sdl/*.cpp -I. -std=c++11 
 
 

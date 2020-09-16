@@ -1,0 +1,8 @@
+[MESSAGES CONTROL]
+
+disable=C0114, C0115, C0116, R0904
+
+[BASIC]
+good-names=x,e,op,n,y,a,f,pc,p, b, b1, b2, i
+
+method-rgx=([a-z_][a-z0-9_]{2,30}|[A-Z][A-Z0-9]{1,10})$

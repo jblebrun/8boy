@@ -5,12 +5,12 @@
 Quick version (if you are on a machine with `make` support`):
 
 1. Install arduino-cli (via `homebrew`, `apt`, etc).
-2. Install go
+2. Install python3
 3. Run `make install-arduboy`
 
 ## Run SDL-based renderer on (only tested on macOS)
 
-1. Install go
+1. Install python3
 2. Run `make sdl-run`
 
 
@@ -45,7 +45,9 @@ CHIP-8 games should use the filename format `name.ch8`, where name is a valid pr
 
 You can also include a `name.info` file to include additional information and configuration for a game. (see below).
 
-The program loader makes a feeble attempt at disassembly, which it will show in comments next to the generated code. Note that it is easily confused: data will be interpreted by code since without flow analysis, there's no way to tell that the bytes are data. Similarly, if data is odd-sized, and program instructions become aligned on odd bytes instead of even, the disassembly will be garbage.
+The program loader makes a feeble attempt at disassembly, which it will show in comments next to the generated code. Note that it is easily confused: data will be interpreted by code since without flow analysis, there's no way to tell that the bytes are data. Similarly, if data is odd-sized, and program instructions become aligned on odd bytes instead of even, the disassembly will be garbage. The
+diassembly in the comments will show two columns: the left column is the diassembly with the assumption of aligned instructions, and
+the right column is the diassembly with the assumption of unaligned instructions.
 
 
 ## Implementation Notes
