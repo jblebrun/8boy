@@ -12,6 +12,8 @@ void ArduMem::load(const uint8_t *program, const uint16_t size)  {
 }
 
 bool ArduMem::externalRead(uint16_t addr, uint8_t *dest, uint8_t size) {
+    if(size == 0) return true;
+
     uint8_t *src = NULL;
 
     if(addr + size < sizeof(font)) {

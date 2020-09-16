@@ -96,10 +96,9 @@ bool SlabMemory::read(uint16_t addr, uint8_t* dest, uint8_t size) {
         }
     } while(size > 0 && slab);
 
-    
     // After the final slab is handled, this handles any remaining pgm data that
     // may need to be written.
-    return externalRead(addr, dest, size);
+    return size > 0 ? externalRead(addr, dest, size) : true;
 }
 
 // writeMem finds or allocates a slab of memory and
