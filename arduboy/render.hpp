@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Arduboy2.h>
-#include "../chip8/render.hpp"
+#include "src/chip8/render.hpp"
 
 
 class ArduboyRender : public Render {

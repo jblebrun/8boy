@@ -6,7 +6,7 @@ Quick version (if you are on a machine with `make` support`):
 
 1. Install arduino-cli (via `homebrew`, `apt`, etc).
 2. Install go
-3. Run `make install`
+3. Run `make install-arduboy`
 
 ## Run SDL-based renderer on (only tested on macOS)
 

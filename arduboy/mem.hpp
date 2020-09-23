@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../chip8/SlabMemory.hpp"
+#include "src/chip8/SlabMemory.hpp"
 #include <Arduino.h>
 
 #define SLAB_COUNT 40

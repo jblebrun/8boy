@@ -1,6 +1,6 @@
 #include "mem.hpp"
 #define FONT_STORAGE_MODIFIER PROGMEM
-#include "../chip8/font.hpp"
+#include "src/chip8/font.hpp"
 
 ArduMem::ArduMem() : SlabMemory(mSlabs, SLAB_COUNT) {} 
 
