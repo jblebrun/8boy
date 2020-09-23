@@ -1,6 +1,6 @@
 # This is a basic workflow to help you get started with Actions
 
-name: Arduboy & SDL Build
+name: Main
 
 # Controls when the action will run. Triggers the workflow on push or pull request
 # events but only for the master branch
@@ -10,18 +10,44 @@ on:
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
-  build:
+  build-arduboy:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
 
-
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       - uses: actions/checkout@v2
 
       - name: Install Arduino CLI
         uses: arduino/setup-arduino-cli@v1.0.0
+
+      - name: Build Arduboy Version
+        run: make arduboy
+
+  build-m5:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install Pyserial
+        run: pip install pyserial
+
+      - name: Install Arduino CLI
+        uses: arduino/setup-arduino-cli@v1.0.0
+
+      - name: Build m5 Version
+        run: make m5 
+
+
+  # This workflow contains a single job called "build"
+  build-sdl:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      - uses: actions/checkout@v2
 
       - name: Cache libsdl2-dev
         uses: actions/cache@v1.0.3
@@ -41,9 +67,7 @@ jobs:
             mkdir -p ~/libsdl2-dev
             sudo dpkg -L libsdl2-dev | while IFS= read -r f; do if test -f $f; then echo $f; fi; done | xargs cp --parents --target-directory ~/libsdl2-dev/
           fi
-
-      - name: Build Arduboy Version
-        run: make build
       
+
       - name: Build SDL Version
         run: make sdl-compile

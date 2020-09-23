@@ -3,10 +3,10 @@
 #include "src/chip8/chip8.hpp"
 
 #include "programs.h"
-#include "src/arduboy/render.hpp"
-#include "src/arduboy/mem.hpp"
-#include "src/arduboy/PrintHelper.hpp"
-#include "src/arduboy/tracer.hpp"
+#include "render.hpp"
+#include "mem.hpp"
+#include "PrintHelper.hpp"
+#include "tracer.hpp"
 
 Arduboy2 boy;
 ArduMem memory;

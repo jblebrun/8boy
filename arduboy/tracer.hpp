@@ -1,5 +1,5 @@
-#include "../chip8/tracer.hpp"
-#include "../chip8/chip8.hpp"
+#include "src/chip8/tracer.hpp"
+#include "src/chip8/chip8.hpp"
 #include "PrintHelper.hpp"
 #include <Arduino.h>
 
