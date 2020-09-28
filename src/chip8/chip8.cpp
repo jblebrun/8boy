@@ -21,6 +21,7 @@ void Chip8::Reset() {
 // Tick updates any state that gets updated at 60Hz by chip-8
 // namely, beep timer and delay timer, and triggers screen draw.
 void Chip8::Tick() {
+    handleButtons();
     mRender.render();
     mTracer.tick(mState, mConfig);
     if(mState.DelayTimer > 0) {
@@ -34,7 +35,7 @@ void Chip8::Tick() {
 inline void Chip8::handleButtons() {
     // Get platform buttons into the emulator state.
     mState.Buttons = mRender.buttons();
-
+    
     // Handle the 0xFX0A (waitKey) instruction if needed.
     if (mState.AwaitingKey && mState.Buttons)  {
         // Find the first pressed button, lower hex value gets priority.
@@ -69,8 +70,6 @@ inline bool Chip8::readWord(uint16_t addr, uint16_t &result) {
 // If an ErrorType other than NO_ERROR is returned, then the PC will be pointing 
 // to the last instruction executed.
 ErrorType Chip8::Step() {
-    handleButtons();
-
     // Let the caller know that we're not running.
     if(!mState.Running) return STOPPED;
 

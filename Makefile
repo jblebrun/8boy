@@ -19,23 +19,22 @@ clean:
 	arduino-cli core install arduino:avr
 	arduino-cli lib install Arduboy2
 
-
-.arduinoesp:
-	arduino-cli core --additional-urls=$(ESP32_URL) install esp32:esp32
-	arduino-cli lib install M5Stack
-
 arduboy: build/arduboy-chip8.arduino.avr.leonardo.hex
 
 build/arduboy-chip8.arduino.avr.leonardo.hex: programs.h src/chip8/*.cpp src/chip8/*.hpp arduboy/*.ino arduboy/*.cpp arduboy/*.hpp .arduinoavr
 	cd arduboy; arduino-cli compile -b arduino:avr:leonardo
 
 install-arduboy: build/arduboy-chip8.arduino.avr.leonardo.hex
-	cd arduboy; ../install-first.sh Leonardo
+	cd arduboy; ../install-first.sh Leonardo arduino:avr:leonardo
 
 
 #M5
+.arduinoesp:
+	arduino-cli core --additional-urls=$(ESP32_URL) install esp32:esp32
+	arduino-cli lib install M5Stack
+
 install-m5: m5
-	cd m5; ../install-first.sh M5
+	cd m5; ../install-first.sh SLAB_USB esp32:esp32:esp32
 
 m5: m5/build/m5.arduino.esp32.esp32.esp32.hex
 
