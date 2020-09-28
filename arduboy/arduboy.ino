@@ -191,8 +191,9 @@ void loadCurrentItem() {
     Serial.println(pgm.size);
     memory.load(pgm.code, pgm.size);
 
+
     emu.SetConfig({
-        .ShiftQuirk = pgm_read_byte(pgm.shiftquirk),
+        .ShiftQuirk = pgm.shiftquirk,
     });
     // Wait for button release before starting emulator, to avoid 
     // the loader button press from registering in the game.
