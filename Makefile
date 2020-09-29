@@ -30,12 +30,12 @@ build/arduboy-chip8.arduino.avr.leonardo.hex: programs.h src/chip8/*.cpp src/chi
 	cd arduboy; arduino-cli compile -b arduino:avr:leonardo
 
 install-arduboy: build/arduboy-chip8.arduino.avr.leonardo.hex
-	./install-first.sh Leonardo
+	cd arduboy; ../install-first.sh Leonardo
 
 
 #M5
 install-m5: m5
-	./install-first.sh M5
+	cd m5; ../install-first.sh M5
 
 m5: m5/build/m5.arduino.esp32.esp32.esp32.hex
 
