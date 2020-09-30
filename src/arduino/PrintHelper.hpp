@@ -36,7 +36,7 @@ enum Format {
 };
 
 class PrintHelper {
-    const Print &mPrint;
+    Print &mPrint;
         
     // A helper to print an array of numbers of the specified nybble size.
     template<typename T>
@@ -58,12 +58,10 @@ class PrintHelper {
     template<typename T>
     void handlePrint(va_list *src);
 
-    inline void space() { mPrint.write(' '); }
-
     void handleCommand(Format f, va_list *src);
 
     public:
-        PrintHelper(const Print &print = Serial) : mPrint(print) {}
+        PrintHelper(Print &print = Serial) : mPrint(print) {}
 
     public:
         void printfs(Format f, ...);

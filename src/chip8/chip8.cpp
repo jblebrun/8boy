@@ -89,7 +89,9 @@ ErrorType Chip8::Step() {
     // instruction resulted in a jump.
     mState.NextPC += 2;
 
+    mTracer.exec(mState, mConfig);
     ErrorType error = exec(mState.Instruction);
+    mTracer.execFinished(mState, mConfig);
     if(error != NO_ERROR) {
         mState.Running = false;
         mTracer.error(error, mState, mConfig);
@@ -98,8 +100,6 @@ ErrorType Chip8::Step() {
 }
 
 inline ErrorType Chip8::exec(uint16_t inst) {
-    mTracer.exec(mState, mConfig);
-
     // Dispatch to the instruction group based on the top nybble.
     switch (inst >> 12) {
         case 0x0: return groupSys(inst);

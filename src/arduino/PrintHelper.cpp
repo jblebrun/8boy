@@ -35,22 +35,26 @@ void PrintHelper::printfs(Format f, ...) {
 }
 
 template<typename T>
-void PrintHelper::printPadded(T w, uint8_t nybbles, int fmt=HEX) {
-    for(int i = nybbles - 1; i >= 0; i--) {
-        mPrint.print((w >> i*4) & 0xF, fmt);
+void PrintHelper::printPadded(T w, uint8_t nybbles, int fmt) {
+    if(fmt == HEX) {
+        for(int i = nybbles - 1; i >= 0; i--) {
+            mPrint.print((w >> i*4) & 0xF, fmt);
+        }
+    } else {
+        mPrint.print(w, fmt);
     }
 }
 
 template<typename T>
-void PrintHelper::printArray(T a, int size, uint8_t nybbles, int fmt=HEX) {
+void PrintHelper::printArray(T a, int size, uint8_t nybbles, int fmt) {
     for(int i = 0; i < size; i++) {
         printPadded(a[i], nybbles, fmt);
-        space();
+        mPrint.write(' ');
     }
 }
 
 template<typename T>
-void PrintHelper::handleX(uint8_t nybbles, va_list *src, int fmt=HEX) {
+void PrintHelper::handleX(uint8_t nybbles, va_list *src, int fmt) {
     T n = va_arg(*src, int);
     printPadded(n, nybbles, fmt);
 }
@@ -62,7 +66,7 @@ void PrintHelper::handlePrint(va_list *src) {
 }
 
 template<typename T>
-void PrintHelper::handleArray(uint8_t nybbles, va_list *src, int fmt=HEX) {
+void PrintHelper::handleArray(uint8_t nybbles, va_list *src, int fmt) {
     T a = va_arg(*src, T);
     int count = va_arg(*src, int);
     printArray(a, count, nybbles, fmt);
