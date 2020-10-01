@@ -64,7 +64,7 @@ void SerialTracer::tick(const EmuState &state, const Config &config) {
 }
 
 
-__FlashStringHelper* SerialTracer::errorMessage(ErrorType errorType) {
+const __FlashStringHelper* SerialTracer::errorMessage(ErrorType errorType) {
     switch(errorType) {
         case STACK_UNDERFLOW: return F("Stack Underflow!");
         case STACK_OVERFLOW: return F("Stack Overflow!");
@@ -77,7 +77,7 @@ __FlashStringHelper* SerialTracer::errorMessage(ErrorType errorType) {
 }
 
 void SerialTracer::error(ErrorType errorType, const EmuState &state, const Config &config) {
-    __FlashStringHelper* errorMsg = errorMessage(errorType);
+    const __FlashStringHelper* errorMsg = errorMessage(errorType);
     if(errorMsg != NULL) {
         mPrint.printfs(FS, errorMsg, '\n', DONE);
     }

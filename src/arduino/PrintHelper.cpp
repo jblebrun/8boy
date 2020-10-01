@@ -29,7 +29,8 @@ void PrintHelper::printfs(Format f, ...) {
 
     while (f != DONE) {
         handleCommand(f, &argp);
-        f= va_arg(argp, int);
+        int fi = va_arg(argp, int);
+        f = (Format)fi;
     }
     va_end(argp);
 }
