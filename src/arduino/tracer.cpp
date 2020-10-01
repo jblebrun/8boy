@@ -6,6 +6,7 @@ inline void SerialTracer::command() {
         uint8_t com = Serial.read();
         switch(com) {
             case ' ': mExec = !mExec; break;
+            case 't': mTicks = !mTicks; break;
             case '0': mExecFinishedThreshold = 0; break;
             case '1': mExecFinishedThreshold = 1; break;
             case '2': mExecFinishedThreshold = 2; break;
@@ -15,6 +16,7 @@ inline void SerialTracer::command() {
 }
 
 void SerialTracer::exec(const EmuState &state, const Config &config) {
+    mCyclesThisTick++;
     command();
     if(mExec) {
         mPrint.printfs(
@@ -48,6 +50,19 @@ void SerialTracer::execFinished(const EmuState &state, const Config &config) {
         );
     }
 }
+
+void SerialTracer::tick(const EmuState &state, const Config &config) {
+    command();
+    if(mTicks) {
+        mPrint.printfs(
+            D16, mCyclesThisTick,
+            FS, F(" cycles/tick\r\n"),
+            DONE
+        );
+        mCyclesThisTick = 0;
+    }
+}
+
 
 __FlashStringHelper* SerialTracer::errorMessage(ErrorType errorType) {
     switch(errorType) {

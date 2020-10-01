@@ -26,11 +26,16 @@ uint8_t pidx;
 const Program *program;
 bool super = false;
 
-unsigned long next = 0;
+uint32_t next_tick = 0;
+uint16_t cycles_per_tick = 60;
+uint16_t cycles = 0;
 void runEmu() {
-    if(boy.nextFrame()) {
+    unsigned long now = micros();
+    if(now > next_tick) {
         render.tick();
         emu.Tick();
+        next_tick = now + 16666;
+        cycles = 0;
     }
 
     // If the emulator exited, we show a message that pressing a key will
@@ -51,11 +56,9 @@ void runEmu() {
         return;
     }
 
-    unsigned long t = micros();
-    if(t < next) {
+    if(cycles >= cycles_per_tick) {
         return;
     }
-    next = t + (super ? 100 : 1000);
     if(boy.pressed(UP_BUTTON) &&
             boy.pressed(DOWN_BUTTON) && 
             boy.pressed(LEFT_BUTTON) && 
@@ -65,6 +68,7 @@ void runEmu() {
         program = NULL;
     }
 
+    cycles++;
     ErrorType error = emu.Step();
     
     if(error != NO_ERROR) {

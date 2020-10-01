@@ -13,4 +13,6 @@ class Tracer {
     virtual inline void execFinished(const EmuState &state, const Config &config) {} 
     // Called when execution of an instruction results in an error.
     virtual inline void error(ErrorType errorType, const EmuState &state, const Config &config) {}
+    // Called on each tick
+    virtual inline void tick(const EmuState &state, const Config &config) {}
 };
