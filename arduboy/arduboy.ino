@@ -5,8 +5,8 @@
 #include "programs.h"
 #include "render.hpp"
 #include "mem.hpp"
-#include "PrintHelper.hpp"
-#include "tracer.hpp"
+#include "src/arduino/PrintHelper.hpp"
+#include "src/arduino/tracer.hpp"
 
 Arduboy2 boy;
 ArduMem memory;

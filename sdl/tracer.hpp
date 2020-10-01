@@ -4,6 +4,9 @@ class ConsoleTracer : public Tracer {
     virtual void exec(const EmuState &state) {
         printf("%4X:%4X\n", state.PC, state.Instruction);
     }
+    
+    virtual void execFinished(const EmuState &state) {
+    }
 
     const char* errorMsg(ErrorType errorType) {
         switch(errorType) {

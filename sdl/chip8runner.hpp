@@ -21,7 +21,7 @@ class Chip8Runner {
     SDL_Renderer *mSDL_Renderer;
     SDLRender mRender;
     //ConsoleTracer mTracer;
-    NopTracer mTracer;
+    Tracer mTracer;
     Chip8 mEmu;
     std::vector<RunnerProgram> mPrograms;
     uint8_t mProgramIndex = 0;
