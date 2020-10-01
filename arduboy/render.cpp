@@ -101,15 +101,11 @@ inline void ArduboyRender::scrollDown(uint8_t shift) {
 inline void ArduboyRender::scrollLeft() {
     // See above for mem layout notes.
     for(int page = 0; page < 8; page++) {
+        uint8_t* start = mBoy.sBuffer + page * WIDTH;
         // Move the columns that are staying on screen to the left.
-        for(int col=0; col < WIDTH-4; col++) {
-            // This column now equals the one 4 to the right.
-            mBoy.sBuffer[page*WIDTH + col] = mBoy.sBuffer[page*WIDTH + col + 4];
-        }
-        // Clear the 4 columns that are opened up by the scroll.
-        for(int col=WIDTH-4; col < WIDTH; col++) {
-            mBoy.sBuffer[page*WIDTH + col] = 0;
-        }
+        memmove(start, start+4,  WIDTH-4);
+        // Clear the columsn that moved offscreen.
+        memset(start + WIDTH-4, 0, 4);
     }
 }
 
@@ -118,15 +114,11 @@ inline void ArduboyRender::scrollLeft() {
 inline void ArduboyRender::scrollRight() {
     // See above for mem layout notes.
     for(int page = 0; page < 8; page++) {
-        // Move the columns that are staynig on screen to the right.
-        for(int col=4; col < WIDTH; col++) {
-            // This column now equals the one 4 to the left.
-            mBoy.sBuffer[page*WIDTH + col] = mBoy.sBuffer[page*WIDTH + col - 4];
-        }
-        // Clear the 4 columns that are opened up by the scroll.
-        for(int col=0; col < 4; col++) {
-            mBoy.sBuffer[page*WIDTH + col] = 0;
-        }
+        uint8_t* start = mBoy.sBuffer + page * WIDTH;
+        // Move the columns that are staying on screen to the left.
+        memmove(start + 4, start,  WIDTH-4);
+        // Clear the columsn that moved offscreen.
+        memset(start, 0, 4);
     }
 }
 
