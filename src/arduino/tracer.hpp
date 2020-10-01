@@ -13,6 +13,8 @@ class SerialTracer : public Tracer {
     bool mExec = false;
     uint8_t mExecFinishedThreshold = 0;
     bool mError = true;
+    uint16_t mCyclesThisTick;
+    bool mTicks = false;
 
     void command();
 
@@ -24,5 +26,6 @@ class SerialTracer : public Tracer {
         virtual void exec(const EmuState &state, const Config &config);
         virtual void execFinished(const EmuState &state, const Config &config);
         virtual void error(ErrorType errorType, const EmuState &state, const Config &config); 
+        virtual void tick(const EmuState &state, const Config &config); 
 };
 

@@ -22,6 +22,7 @@ void Chip8::Reset() {
 // namely, beep timer and delay timer, and triggers screen draw.
 void Chip8::Tick() {
     mRender.render();
+    mTracer.tick(mState, mConfig);
     if(mState.DelayTimer > 0) {
         mState.DelayTimer--;
     }
