@@ -6,7 +6,7 @@
 class SerialTracer : public Tracer {
     PrintHelper mPrint;
 
-    __FlashStringHelper* errorMessage(ErrorType errorType);
+    const __FlashStringHelper* errorMessage(ErrorType errorType);
 
     uint32_t mExecStart = 0;
 
