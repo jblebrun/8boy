@@ -41,7 +41,13 @@ bool ArduboyRender::drawPixel(uint8_t cx, uint8_t cy, bool drawVal) {
     uint8_t on = wasOn ^ drawVal;
 
     // Draw the pixel rectangle.
-    mBoy.drawRect(x, y, mPixelWidth, mPixelHeight, on ? WHITE : BLACK); 
+    // Use a series of drawPixel calls, seems fastest.
+    mBoy.drawPixel(x, y, on ? WHITE : BLACK);
+    if(mPixelWidth > 1) {
+        mBoy.drawPixel(x+1, y, on ? WHITE : BLACK);
+        if(mPixelHeight > 1) mBoy.drawPixel(x+1, y+1, on ? WHITE : BLACK);
+    }
+    if(mPixelHeight > 1) mBoy.drawPixel(x, y+1, on ? WHITE : BLACK);
 
     // A pixel draw triggers a collision when it moves from set to unset.
     return wasOn & !on;
