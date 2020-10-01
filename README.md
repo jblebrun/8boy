@@ -1,4 +1,4 @@
-# Arduboy Chip8
+# 8boy - Chip8 Emulator for Arduboy
 
 ## Run it!
 
