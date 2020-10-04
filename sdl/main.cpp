@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include "chip8runner.hpp"
 #define PROGMEM
+#include "program.h"
 #include "programs.h"
 #include <thread>
 

@@ -16,6 +16,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.8' 
 
       - name: Install Arduino CLI
         uses: arduino/setup-arduino-cli@v1.0.0
@@ -29,6 +32,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.8' 
 
       - name: Install Pyserial
         run: pip install pyserial
@@ -48,6 +54,9 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.8' 
 
       - name: Cache libsdl2-dev
         uses: actions/cache@v1.0.3
