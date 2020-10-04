@@ -160,11 +160,26 @@ inline void Chip8::setSuperhires(bool enabled) {
 inline void Chip8::groupJump(uint16_t inst) {
     // Hack for handling original 64x64 Hi-Res mode
     // HiRes ML routines were at 200-248, hi-res
-    // programs started at 0x260.
+    // programs started at 0x2c0. They always start
+    // with a jump to 0x0260, which runs a setup routine
+    // in chip8/native asm:
+    // * 6012 61be a200 f155
+    //   Rewrite the first chip8 instruction to be a jump to 0x12be
+    // * A series of reads of 0x200 space followed by writes to 0x000 
+    //   space, presumably copying some native 1802 code contained in
+    //   the Chip8 rom into the emulator space.
+    // * It ends with 0x02ac at program address 0x02ac, 
+    //   which jumps to a native RCA1802 routine at that location. 
+    //   That routine eventually returns to running the chip8
+    //   program. So in the emulator. 
     if(mState.PC == 0x200 && inst == 0x1260) {
+        // Do what the ML code would do. 
         mRender.setMode(CHIP8HI);
+        // Re-enter 0x0200, which is just going to jump to 0x02be.
+        mState.NextPC = 0x02c0;
+    } else {
+        mState.NextPC = imm12(inst);
     }
-    mState.NextPC = imm12(inst);
 }
 
 // 02nnn call
