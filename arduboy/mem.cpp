@@ -22,7 +22,7 @@ bool ArduMem::externalRead(uint16_t addr, uint8_t *dest, uint8_t size) {
     } else if(addr < sizeof(font) + sizeof(fonthi)) {
         // Fully in fonthi space, read fonthi.
         src = &fonthi[addr - sizeof(font)];
-    } else if(addr >= 0x200 & addr + size - 0x200 < mProgramSize) {
+    } else if(addr >= 0x200 && (addr + size - 0x200 <= mProgramSize)) {
         // Fully in program space, read program.
         src = &mProgram[addr-0x0200];
     } 
