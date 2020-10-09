@@ -40,8 +40,9 @@ inline void Chip8::handleButtons() {
     if (mState.AwaitingKey && mState.Buttons)  {
         // Find the first pressed button, lower hex value gets priority.
         uint8_t pressed = 0;
-        while((mState.Buttons & 0x01) == 0) {
-            mState.Buttons >>= 1;
+        uint8_t mask = 0x01;
+        while((mState.Buttons & mask) == 0) {
+            mask <<= 1;
             pressed++;
         }
 
